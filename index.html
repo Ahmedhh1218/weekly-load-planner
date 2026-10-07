@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Load Planner</title>
+<meta name="description" content="Drag blocks onto a week timeline and see your hours, effort and spare time. Track income and expenses too. Free, private, installs on iPhone, Android and laptop.">
+<meta name="theme-color" content="#f2f4f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1520" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Weekly Load Planner">
+<meta property="og:description" content="See how full your week really is. Free, private, works offline.">
+<meta property="og:image" content="assets/schedule-light.webp">
+<link rel="icon" href="app/icons/icon.svg" type="image/svg+xml">
+<link rel="preload" href="app/fonts/bricolage-grotesque-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: 'Bricolage Grotesque'; font-weight: 700; font-display: swap; src: url(app/fonts/bricolage-grotesque-latin-700-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-weight: 500; font-display: swap; src: url(app/fonts/bricolage-grotesque-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Instrument Sans'; font-weight: 400; font-display: swap; src: url(app/fonts/instrument-sans-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Instrument Sans'; font-weight: 500; font-display: swap; src: url(app/fonts/instrument-sans-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Instrument Sans'; font-weight: 600; font-display: swap; src: url(app/fonts/instrument-sans-latin-600-normal.woff2) format('woff2'); }
+:root {
+  --bg: #f2f4f7; --surface: #ffffff; --ink: #13202f; --ink2: #475669; --line: #d9e0e8; --btn: #13202f; --btn-ink: #ffffff;
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --on: #0b0b0b; --free: #1c7a52;
+  --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; --body: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #0e1520; --surface: #151f2c; --ink: #e9eef5; --ink2: #a2b2c4; --line: #26364a; --btn: #e9eef5; --btn-ink: #0e1520;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --free: #62c79a;
+} }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--body); -webkit-text-size-adjust: 100%; }
+a { color: inherit; text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--c1); outline-offset: 3px; border-radius: 4px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; line-height: 1.08; margin: 0; }
+h1 { font-size: clamp(2.5rem, 7vw, 4.6rem); max-width: 14ch; }
+h2 { font-size: clamp(1.7rem, 4vw, 2.5rem); max-width: 20ch; }
+h3 { font-size: 1.15rem; letter-spacing: -0.01em; }
+p { margin: 0; max-width: 60ch; }
+.btn { display: inline-block; font: 600 16px/1 var(--body); text-decoration: none; padding: 14px 20px; border-radius: 10px; border: 1.5px solid var(--btn); background: var(--btn); color: var(--btn-ink); cursor: pointer; }
+.btn.alt { background: transparent; color: var(--ink); }
+.btn:hover { filter: brightness(1.12); }
+.btn[hidden] { display: none; }
+header { padding: 18px 0; }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 1.1rem var(--display); text-decoration: none; letter-spacing: -0.01em; }
+.mark { width: 30px; height: 30px; }
+header .btn { padding: 10px 16px; font-size: 15px; white-space: nowrap; }
+.hero { padding: 44px 0 28px; }
+.hero p.lead { font-size: 1.2rem; color: var(--ink2); margin-top: 20px; max-width: 46ch; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.week { list-style: none; margin: 48px 0 0; padding: 22px 22px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.axis { display: grid; grid-template-columns: 44px 1fr 74px; font-size: 12px; color: var(--ink2); margin-bottom: 6px; }
+.axis span:nth-child(2) { display: flex; justify-content: space-between; }
+.row { display: grid; grid-template-columns: 44px 1fr 74px; align-items: center; height: 46px; border-top: 1px solid var(--line); }
+.day { font-weight: 600; font-size: 14px; }
+.track { position: relative; height: 30px; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(100% / 5 - 1px), var(--line) calc(100% / 5 - 1px), var(--line) calc(100% / 5)); }
+.bar { position: absolute; top: 0; height: 100%; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; overflow: hidden; color: var(--on); transform-origin: left center; animation: grow .7s cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--d); }
+.bar b { font: 600 12px/1 var(--body); white-space: nowrap; }
+.bar.c1 { background: var(--c1); } .bar.c2 { background: var(--c2); } .bar.c3 { background: var(--c3); } .bar.c4 { background: var(--c4); }
+.free { text-align: right; font-size: 13px; color: var(--free); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sum { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--ink2); font-size: 15px; display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.sum strong { color: var(--ink); }
+@keyframes grow { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bar { animation: none; } html { scroll-behavior: auto; } }
+section { padding: 72px 0 0; }
+.feat { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 48px; align-items: center; }
+.feat.flip { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+.feat.flip .shot { order: -1; }
+.feat .copy p { margin-top: 16px; color: var(--ink2); }
+.shot img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 18px 40px -24px rgba(10,20,40,.45); }
+.facts { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.facts li { padding-left: 22px; position: relative; }
+.facts li::before { content: ''; position: absolute; left: 0; top: .6em; width: 10px; height: 10px; border-radius: 3px; background: var(--c3); }
+.plat { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 48px; align-items: start; margin-top: 28px; }
+.plat dl { margin: 0; display: grid; gap: 0; }
+.plat .p { display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 18px 16px; border-top: 1px solid var(--line); border-radius: 0; }
+.plat .p:last-child { border-bottom: 1px solid var(--line); }
+.plat dt { font-weight: 600; }
+.plat dt small { display: block; font-weight: 400; color: var(--ink2); font-size: 14px; }
+.plat dd { margin: 0; color: var(--ink2); }
+.plat dd ol { margin: 0; padding-left: 1.2em; }
+.plat .p.here { background: var(--surface); border-radius: 12px; border-color: transparent; box-shadow: inset 0 0 0 2px var(--c1); }
+.plat .phone img { width: 100%; height: auto; border-radius: 28px; border: 1px solid var(--line); box-shadow: 0 18px 40px -24px rgba(10,20,40,.45); display: block; }
+.note { margin-top: 14px; color: var(--ink2); font-size: 15px; }
+.log { margin: 22px 0 0; padding: 0; list-style: none; max-width: 60ch; }
+.log li { padding: 14px 0; border-top: 1px solid var(--line); }
+.log time { font-weight: 600; margin-right: 8px; }
+.faq { margin-top: 24px; max-width: 70ch; }
+.faq details { border-top: 1px solid var(--line); padding: 16px 0; }
+.faq details:last-child { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; font-weight: 600; list-style-position: outside; }
+.faq details p { margin-top: 10px; color: var(--ink2); }
+footer { margin-top: 88px; padding: 28px 0 44px; border-top: 1px solid var(--line); color: var(--ink2); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 28px; justify-content: space-between; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+@media (max-width: 820px) {
+  .feat, .feat.flip, .plat { grid-template-columns: 1fr; gap: 28px; }
+  .feat.flip .shot { order: 0; }
+  .plat .phone { max-width: 240px; }
+  .plat .p { grid-template-columns: 1fr; gap: 6px; }
+  .week { padding: 14px 12px 12px; }
+  .axis, .row { grid-template-columns: 36px 1fr 58px; }
+  .bar b { font-size: 11px; } .bar { padding: 0 5px; }
+  .free { font-size: 12px; }
+  section { padding-top: 56px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="./"><svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#121211"/><rect x="124" y="128" width="148" height="46" rx="14" fill="#2a78d6"/><rect x="286" y="128" width="102" height="46" rx="14" fill="#eb6834"/><rect x="124" y="204" width="96" height="46" rx="14" fill="#1baf7a"/><rect x="234" y="204" width="154" height="46" rx="14" fill="#eda100"/><rect x="124" y="280" width="168" height="46" rx="14" fill="#e87ba4"/><rect x="306" y="280" width="82" height="46" rx="14" fill="#4a3aa7"/><rect x="124" y="356" width="70" height="46" rx="14" fill="#2a78d6"/><rect x="208" y="356" width="180" height="46" rx="14" fill="#1baf7a"/></svg>Weekly Load Planner</a>
+    <a class="btn" href="app/">Open the app</a>
+  </div>
+</header>
+<main>
+<div class="hero">
+  <div class="wrap">
+    <h1>See how full your week really is.</h1>
+    <p class="lead">Drag blocks onto a timeline. Get your hours, effort and spare time for every day, plus income and expenses for the month. Free, private and it works offline.</p>
+    <div class="cta">
+      <a class="btn" href="app/">Open the app</a>
+      <button type="button" class="btn alt" id="install-hero" hidden>Install the app</button>
+      <a class="btn alt" href="#install" id="how-install">How to install</a>
+    </div>
+    <div class="week" role="img" aria-label="A sample week: work on weekdays, training and a side project in the evenings, with free hours left on each day.">
+      <div class="axis" aria-hidden="true"><span></span><span><span>07:00</span><span>10:00</span><span>13:00</span><span>16:00</span><span>19:00</span><span>22:00</span></span><span></span></div>
+      <ul style="list-style:none;margin:0;padding:0" aria-hidden="true">
+<li class="row"><span class="day">Mon</span><span class="track"><span class="bar c1" style="left:13.33%;width:53.33%;--d:0ms"><b>Work</b></span><span class="bar c3" style="left:73.33%;width:10.00%;--d:90ms"><b>Training</b></span></span><span class="free">3.5 h free</span></li>
+<li class="row"><span class="day">Tue</span><span class="track"><span class="bar c1" style="left:13.33%;width:53.33%;--d:70ms"><b>Work</b></span><span class="bar c2" style="left:83.33%;width:13.33%;--d:160ms"><b>Side project</b></span></span><span class="free">3 h free</span></li>
+<li class="row"><span class="day">Wed</span><span class="track"><span class="bar c1" style="left:13.33%;width:53.33%;--d:140ms"><b>Work</b></span><span class="bar c3" style="left:73.33%;width:10.00%;--d:230ms"><b>Training</b></span></span><span class="free">3.5 h free</span></li>
+<li class="row"><span class="day">Thu</span><span class="track"><span class="bar c1" style="left:13.33%;width:53.33%;--d:210ms"><b>Work</b></span><span class="bar c2" style="left:83.33%;width:13.33%;--d:300ms"><b>Side project</b></span></span><span class="free">3 h free</span></li>
+<li class="row"><span class="day">Fri</span><span class="track"><span class="bar c1" style="left:13.33%;width:53.33%;--d:280ms"><b>Work</b></span><span class="bar c3" style="left:73.33%;width:10.00%;--d:370ms"><b>Training</b></span></span><span class="free">3.5 h free</span></li>
+<li class="row"><span class="day">Sat</span><span class="track"><span class="bar c4" style="left:20.00%;width:16.67%;--d:350ms"><b>Course</b></span></span><span class="free">10.5 h free</span></li>
+<li class="row"><span class="day">Sun</span><span class="track"><span class="bar c2" style="left:26.67%;width:20.00%;--d:420ms"><b>Side project</b></span></span><span class="free">10 h free</span></li>
+      </ul>
+      <p class="sum" style="max-width:none"><span><strong>54 h</strong> planned</span><span><strong>37 h</strong> of room left this week</span><span>Sample week. Yours starts empty.</span></p>
+    </div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <div class="feat">
+      <div class="copy">
+        <h2>Drag blocks. See the load.</h2>
+        <p>Move, stretch and add blocks on a week timeline. The charts update as you go: hours per category, and each day measured against what it can really hold once meals and commuting are taken out.</p>
+        <p>Switch from hours to effort when a two-hour exam prep drains you more than a two-hour walk. You give each category its own weight.</p>
+      </div>
+      <div class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/schedule-dark.webp"><img class="" src="assets/schedule-light.webp" width="1100" height="1402" alt="The weekly planner showing a timeline of blocks, a donut chart of hours by category and each day against its capacity." loading="lazy" decoding="async"></picture></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="feat flip">
+      <div class="copy">
+        <h2>Money sits next to the schedule.</h2>
+        <p>Add income as a fixed monthly amount or an hourly rate, in any currency. Hourly income reads its hours from your schedule, so a busier week shows up in the month.</p>
+        <p>Log expenses day by day and see the month at a glance: what came in, what went out, what you kept. Exchange rates update by themselves when you are online.</p>
+      </div>
+      <div class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/money-dark.webp"><img class="" src="assets/money-light.webp" width="1100" height="1260" alt="The money view showing monthly income, expenses and net, spending by day and by category, and a six month trend." loading="lazy" decoding="async"></picture></div>
+    </div>
+  </div>
+</section>
+
+<section id="private">
+  <div class="wrap">
+    <h2>Your plans stay on your device.</h2>
+    <ul class="facts">
+      <li>No account and no sign-up.</li>
+      <li>No ads and no analytics.</li>
+      <li>Backup saves everything to a file. Restore loads it on any device, so that is how you move from your laptop to your phone.</li>
+    </ul>
+    <p class="note">The only thing the app sends out is a request for exchange rates. It names a currency and nothing you have entered. <a href="privacy.html">Read the privacy note</a>.</p>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install it in a few taps.</h2>
+    <p class="note" style="margin-top:12px">Once installed it opens full screen, has its own icon and works without a connection.</p>
+    <div class="plat">
+      <dl>
+        <div class="p" data-os="ios"><dt>iPhone and iPad<small>Safari</small></dt><dd><ol><li>Open <a href="app/">the app</a> in Safari.</li><li>Tap Share.</li><li>Choose Add to Home Screen, then tap Add.</li></ol><p class="note" id="ios-note" hidden>You are not in Safari. Open this page in Safari to install.</p></dd></div>
+        <div class="p" data-os="android"><dt>Android<small>Chrome</small></dt><dd><ol><li>Open <a href="app/">the app</a> in Chrome.</li><li>Tap the menu, then Install app.</li></ol><button type="button" class="btn" id="install-android" hidden style="margin-top:12px">Install the app</button></dd></div>
+        <div class="p" data-os="desktop"><dt>Windows, Mac and Chromebook<small>Chrome or Edge</small></dt><dd><ol><li>Open <a href="app/">the app</a>.</li><li>Click the install icon at the right end of the address bar.</li></ol><button type="button" class="btn" id="install-desktop" hidden style="margin-top:12px">Install the app</button></dd></div>
+      </dl>
+      <div class="phone"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/phone-dark.webp"><img class="" src="assets/phone-light.webp" width="520" height="1125" alt="The planner on a phone screen." loading="lazy" decoding="async"></picture></div>
+    </div>
+  </div>
+</section>
+
+<section id="updates">
+  <div class="wrap">
+    <h2>Updates arrive by themselves.</h2>
+    <p style="margin-top:16px;color:var(--ink2)">When a new version is ready, the app shows a banner. Tap Reload to update. Your plans and money data stay where they are.</p>
+    <ul class="log">
+      <li><time datetime="2026-10-07">1.0.0</time> First public release. Weekly timeline with drag and drop, charts, income and expenses in any currency, live exchange rates, backup and restore, light and dark themes, offline use.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>Questions</h2>
+    <div class="faq">
+      <details><summary>Is it free?</summary><p>Yes. The code is open source under the MIT licence, and you can read it on GitHub.</p></details>
+      <details><summary>Do my plans sync between my phone and laptop?</summary><p>Not automatically. Use Backup on one device and Restore on the other. Automatic sync would need accounts and a server, and that is a bigger trade-off for your privacy.</p></details>
+      <details><summary>What happens if I clear my browser data?</summary><p>Plans live in the browser's storage, so clearing site data deletes them. Safari can also clear storage for sites you rarely open. Press Backup now and then to keep a copy.</p></details>
+      <details><summary>Where do the exchange rates come from?</summary><p>From a free public rates service, fetched when you are online. If you prefer, type your own rate for any currency in the money settings.</p></details>
+      <details><summary>Does it need an internet connection?</summary><p>Only for exchange rates. Everything else works offline once the app has loaded.</p></details>
+      <details><summary>Which browsers work?</summary><p>Current Safari, Chrome, Edge and Firefox. Installing as an app works in Safari on iPhone and iPad, Chrome and Edge on Android and desktop.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+<footer>
+  <div class="wrap">
+    <span>Weekly Load Planner 1.0.0. Exchange rates by <a href="https://www.exchangerate-api.com">ExchangeRate-API</a>.</span>
+    <nav><a href="https://github.com/Ahmedhh1218/weekly-load-planner">Source code</a><a href="https://github.com/Ahmedhh1218/weekly-load-planner/issues">Report a problem</a><a href="privacy.html">Privacy</a></nav>
+  </div>
+</footer>
+<script>
+(function () {
+  var ua = navigator.userAgent, ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var os = ios ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop';
+  var row = document.querySelector('.p[data-os="' + os + '"]'); if (row) row.classList.add('here');
+  if (ios && /CriOS|FxiOS|EdgiOS/.test(ua)) document.getElementById('ios-note').hidden = false;
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  var deferred = null, btns = ['install-hero', 'install-android', 'install-desktop'].map(function (id) { return document.getElementById(id); });
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferred = e;
+    btns.forEach(function (b) { b.hidden = false; });
+    document.getElementById('how-install').hidden = true;
+  });
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!deferred) return; deferred.prompt();
+      deferred.userChoice.then(function () { deferred = null; btns.forEach(function (x) { x.hidden = true; }); });
+    });
+  });
+  window.addEventListener('appinstalled', function () { btns.forEach(function (x) { x.hidden = true; }); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weekly Load Planner</title>
+<meta name="description" content="Plan your week by dragging blocks, see hours, effort and spare capacity, and track income and expenses. Free, private, works offline.">
+<meta name="theme-color" content="#f4f4f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Load Planner">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+@font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 500; font-display: swap; src: url(fonts/bricolage-grotesque-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/bricolage-grotesque-latin-700-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Instrument Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/instrument-sans-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Instrument Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url(fonts/instrument-sans-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Instrument Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url(fonts/instrument-sans-latin-600-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url(fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2'); }
+/* tabs + money view */
+.tabs { align-self: flex-start; }
+.tabs button { padding: 9px 20px; font-size: 14px; }
+.mnav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.mnav h2 { font-size: 22px; min-width: 9.5ch; text-align: center; }
+.mnav .grow { flex: 1; }
+.src { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 14px; align-items: end; padding: 14px 0; border-top: 1px solid var(--grid); }
+.src:first-of-type { border-top: 0; padding-top: 0; }
+.src .res { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.src .res b { font-family: var(--font-data); font-weight: 500; font-variant-numeric: tabular-nums; }
+.src .res small { color: var(--ink-3); }
+.src .rm { justify-self: start; }
+.srcnote { color: var(--ink-3); font-size: 12px; grid-column: 1 / -1; margin: -4px 0 0; }
+.dwrap { position: relative; padding-left: 48px; }
+.dgrid { position: absolute; left: 0; right: 0; top: 0; height: 170px; pointer-events: none; }
+.dgrid i { position: absolute; left: 48px; right: 0; height: 1px; background: var(--grid); }
+.dgrid span { position: absolute; left: 0; width: 42px; text-align: right; font-size: 11px; color: var(--ink-3); font-family: var(--font-data); transform: translateY(-50%); }
+.davg { position: absolute; left: 48px; right: 0; height: 0; border-top: 1px solid var(--ink); z-index: 2; pointer-events: none; }
+.davg span { position: absolute; right: 0; bottom: 3px; font-size: 11px; color: var(--ink-2); background: var(--surface); padding: 0 4px; }
+.dcols { position: relative; display: flex; align-items: flex-end; height: 170px; z-index: 1; }
+.dcol { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; cursor: default; }
+.dbar { width: min(100%, 22px); display: flex; flex-direction: column-reverse; gap: 2px; }
+.dbar > div { transition: opacity .15s; min-height: 2px; }
+.dbar > div:last-child { border-radius: 4px 4px 0 0; }
+.dlabels { display: flex; padding-left: 48px; margin-top: 6px; }
+.dlabels span { flex: 1 1 0; min-width: 0; text-align: center; font-size: 11px; color: var(--ink-3); font-family: var(--font-data); }
+.dlabels span.today { color: var(--ink); font-weight: 600; }
+.trend { display: flex; align-items: flex-end; gap: 6px; height: 190px; }
+.tg { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; cursor: pointer; }
+.tbars { display: flex; align-items: flex-end; gap: 2px; height: 130px; }
+.tb { width: 16px; max-width: 100%; border-radius: 4px 4px 0 0; min-height: 2px; display: block; }
+.tb.inc { background: var(--c3); } .tb.exp { background: var(--c2); }
+.tm { font-size: 11px; color: var(--ink-3); font-family: var(--font-data); }
+.tg.cur .tm { color: var(--ink); font-weight: 600; }
+.tn { font-size: 11px; font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tn.pos { color: var(--ok); } .tn.neg { color: var(--crit); }
+.legend .kd { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.crow2 { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 4px 10px; padding: 9px 0; border-top: 1px solid var(--grid); }
+.crow2:first-child { border-top: 0; }
+.crow2 .top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.crow2 .nm { font-weight: 500; }
+.crow2 .barwrap { grid-column: 2; position: relative; height: 12px; background: var(--track); border-radius: 0 4px 4px 0; }
+.crow2 .barwrap i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.crow2 .barwrap .bud { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+.crow2 .meta2 { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.log { display: flex; flex-direction: column; max-height: 460px; overflow-y: auto; }
+.lg { display: grid; grid-template-columns: 76px 12px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--grid); }
+.lg:first-child { border-top: 0; }
+.lg .dt { color: var(--ink-2); font-size: 12px; }
+.lg .nt { min-width: 0; overflow-wrap: anywhere; }
+.lg .nt small { color: var(--ink-3); display: block; }
+.lg .am { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.lg .ac { display: flex; gap: 6px; }
+.lg .ac .btn { padding: 4px 9px; font-size: 12px; }
+.tag { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+@media (max-width: 560px) { .lg { grid-template-columns: 58px 12px minmax(0, 1fr); } .lg .am, .lg .ac { grid-column: 3; justify-content: flex-start; text-align: left; } }
+.rrow, .xrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 12px; align-items: end; padding: 10px 0; border-top: 1px solid var(--grid); }
+.rrow:first-of-type, .xrow:first-of-type { border-top: 0; }
+.msec { margin-top: 20px; }
+/* Layout: plan bar, KPIs, editable week timeline (days as rows) with a block editor under it,
+   donut + load-vs-capacity, table view. Categorical slots 1-8 come from the validated reference palette. */
+:root {
+  --bg: #f4f4f1; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #6f6e68;
+  --line: #e2e1dc; --grid: #ebeae6; --track: #f0efec;
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --c7: #4a3aa7; --c8: #e34948;
+  --o1: #0b0b0b; --o2: #0b0b0b; --o3: #0b0b0b; --o4: #0b0b0b; --o5: #0b0b0b; --o6: #ffffff; --o7: #ffffff; --o8: #0b0b0b;
+  --ok: #17794a; --warn: #9a6200; --crit: #c0302e;
+  --ok-bg: #e4f2ea; --warn-bg: #f7ecd5; --crit-bg: #f9e3e2;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121211; --surface: #1a1a19; --ink: #f4f3ee; --ink-2: #c3c2b7; --ink-3: #9c9b92;
+    --line: #2e2e2b; --grid: #262624; --track: #232321;
+    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
+    --o6: #ffffff; --o7: #0b0b0b; --o8: #0b0b0b;
+    --ok: #4cc08a; --warn: #e3a63a; --crit: #f07470;
+    --ok-bg: #173225; --warn-bg: #3a2c10; --crit-bg: #3d1c1b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121211; --surface: #1a1a19; --ink: #f4f3ee; --ink-2: #c3c2b7; --ink-3: #9c9b92;
+  --line: #2e2e2b; --grid: #262624; --track: #232321;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
+  --o6: #ffffff; --o7: #0b0b0b; --o8: #0b0b0b;
+  --ok: #4cc08a; --warn: #e3a63a; --crit: #f07470;
+  --ok-bg: #173225; --warn-bg: #3a2c10; --crit-bg: #3d1c1b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45; padding-inline: 16px; padding-block: 24px 56px; }
+.wrap { max-width: 1080px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(26px, 5vw, 36px); letter-spacing: -0.02em; line-height: 1.1; }
+h2 { font-size: 18px; letter-spacing: -0.01em; }
+h3 { font-size: 14px; }
+.sub { color: var(--ink-2); margin: 6px 0 0; }
+.hd { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px 24px; }
+.hd > div:first-child { min-width: 0; flex: 1 1 320px; }
+.eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
+
+/* form bits */
+.in, select.in, input[type=text].in {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; max-width: 100%;
+}
+.in:focus-visible, .btn:focus-visible, .seg-toggle button:focus-visible, input[type=range]:focus-visible, summary:focus-visible, .blk:focus-visible, .chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btn {
+  font: inherit; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { border-color: var(--ink-3); }
+.btn:disabled { opacity: .45; cursor: default; }
+.banner.upd { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 50; display: flex; gap: 12px; align-items: center; justify-content: space-between; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+.foot { text-align: center; color: var(--ink-3); font-size: 12px; margin: 28px 0 24px; }
+.foot a { color: inherit; }
+.dlg { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 20px; width: min(440px, calc(100vw - 32px)); }
+.dlg::backdrop { background: rgba(0,0,0,.45); }
+.dlg h2 { margin: 0 0 4px; font-size: 20px; }
+.dnote { margin: 4px 0 12px; color: var(--ink-2); font-size: 13px; }
+.ob-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px 12px; align-items: center; font-size: 13px; }
+.dact { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.btn.armed { color: var(--crit); border-color: var(--crit); }
+.btn.solid { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.seg-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg-toggle button { font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-2); background: transparent; border: 0; padding: 7px 14px; cursor: pointer; }
+.seg-toggle button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+input[type=range] { accent-color: var(--ink); width: 100%; min-width: 0; }
+.val { font-family: var(--font-data); font-size: 13px; min-width: 3.4em; font-variant-numeric: tabular-nums; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.note { color: var(--ink-3); font-size: 12px; margin: 8px 0 0; }
+
+/* plan bar */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; }
+.bar .plan { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 230px; }
+.bar .plan select { flex: 1; min-width: 0; font-weight: 600; }
+.bar .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.status { font-size: 12px; color: var(--ink-3); display: inline-flex; align-items: center; gap: 6px; min-height: 20px; }
+.status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.status.ok::before { background: var(--ok); }
+.status.bad { color: var(--crit); }
+.status.bad::before { background: var(--crit); }
+.banner { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; }
+details.settings { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-block: 12px; }
+details.settings > summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+.sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 24px; margin-top: 14px; }
+.fld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.fld > label, .fld > .lbl { font-size: 12px; color: var(--ink-2); }
+.fld .row { display: flex; align-items: center; gap: 10px; }
+.cats { margin-top: 18px; display: flex; flex-direction: column; }
+.crow { display: grid; grid-template-columns: 12px minmax(0, 1.2fr) minmax(0, 1fr) 46px auto; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--grid); }
+.crow:first-of-type { border-top: 0; }
+@media (max-width: 620px) { .crow { grid-template-columns: 12px minmax(0, 1fr) 46px auto; } .crow .wr { grid-column: 2 / 4; grid-row: 2; } }
+
+/* kpis */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-block: 1px solid var(--line); }
+.kpi { padding: 14px 16px 14px 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpi + .kpi { padding-left: 16px; border-left: 1px solid var(--line); }
+.kpi .big { font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi .big small { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+.kpi .cap { color: var(--ink-2); font-size: 12px; }
+@media (max-width: 720px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi:nth-child(3) { padding-left: 0; border-left: 0; }
+  .kpi:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+.insights { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 28px; color: var(--ink-2); }
+.insights li { padding-left: 14px; position: relative; }
+.insights li::before { content: ""; position: absolute; left: 0; top: 0.6em; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
+.insights li.warn::before { background: var(--crit); }
+.insights b { color: var(--ink); font-weight: 600; }
+
+/* panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 20px; min-width: 0; }
+.panel-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .capkey { width: 2px; height: 14px; background: var(--ink); display: inline-block; }
+.two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.hint { color: var(--ink-3); font-size: 12px; margin: 0 0 12px; }
+
+/* timeline */
+.scroll-x { overflow-x: auto; }
+.tl { position: relative; min-width: 700px; padding-left: 44px; padding-right: 14px; }
+.tl-axis { position: relative; height: 20px; }
+.tl-axis span { position: absolute; top: 0; font-size: 11px; color: var(--ink-3); transform: translateX(-50%); font-family: var(--font-data); }
+.tl-axis span.last { transform: translateX(-100%); }
+.tl-plot { position: absolute; left: 44px; right: 14px; top: 20px; bottom: 0; pointer-events: none; }
+.tl-plot i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+.tl-now { position: absolute; top: 14px; bottom: 0; width: 2px; background: var(--ink); pointer-events: none; z-index: 3; }
+.tl-now::before { content: "now"; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.tl-row { position: relative; height: 40px; z-index: 1; cursor: cell; }
+.tl-row + .tl-row { border-top: 1px solid var(--grid); }
+.tl-day { position: absolute; left: -44px; top: 0; height: 40px; display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ink-2); pointer-events: none; }
+.tl-day.today { color: var(--ink); }
+.tl-day.today::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
+.blk {
+  position: absolute; top: 5px; height: 30px; border-radius: 4px; font-size: 12px; font-weight: 600; line-height: 30px;
+  padding-inline: 8px; white-space: nowrap; cursor: grab; user-select: none; -webkit-user-select: none;
+  transition: opacity .15s; touch-action: pan-x pan-y; z-index: 1;
+}
+.blk .lbl { pointer-events: none; }
+.blk.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; touch-action: none; cursor: grabbing; }
+.blk.clash { box-shadow: inset 0 0 0 2px var(--crit); }
+.grip { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; }
+.grip.l { left: 0; } .grip.r { right: 0; }
+.blk.sel .grip::after { content: ""; position: absolute; top: 9px; bottom: 9px; left: 4px; width: 2px; border-radius: 1px; background: currentColor; opacity: .75; }
+@media (pointer: coarse) { .blk.sel .grip { width: 18px; } .blk.sel .grip::after { left: 7px; } }
+.ghost { position: absolute; top: 5px; height: 30px; border-radius: 4px; border: 2px dashed var(--ink-3); pointer-events: none; z-index: 2; }
+.ro .tl-row { cursor: default; } .ro .blk { cursor: default; }
+
+/* editor */
+.editor { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.editor .none { color: var(--ink-3); }
+.egrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 14px; align-items: end; }
+.egrid .wide { grid-column: span 2; }
+@media (max-width: 480px) { .egrid .wide { grid-column: auto; } }
+.erow { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-top: 12px; }
+.chip { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.chip:hover { border-color: var(--ink-3); color: var(--ink); }
+@media (max-width: 720px) { .in, select.in, input[type=text].in { font-size: 16px; } }
+
+/* donut */
+.donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.donut { position: relative; width: 200px; height: 200px; flex: none; }
+.donut svg { width: 100%; height: 100%; display: block; }
+.donut circle { transition: opacity .15s; }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; }
+.donut-center .big { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.donut-center .cap { font-size: 12px; color: var(--ink-2); margin-top: 4px; max-width: 90px; }
+.dlegend { width: 100%; display: flex; flex-direction: column; }
+.dl-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 48px; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--grid); transition: opacity .15s; }
+.dl-row:first-child { border-top: 0; }
+.dl-row .nm { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.dl-row .pc { color: var(--ink-2); text-align: right; }
+
+/* load bars */
+.lrow { display: grid; grid-template-columns: 38px minmax(0, 1fr); grid-template-areas: "day bar" ". meta"; gap: 4px 8px; padding: 9px 0; border-top: 1px solid var(--grid); }
+.lrow:first-of-type { border-top: 0; }
+.lrow .d { grid-area: day; font-size: 12px; font-weight: 600; color: var(--ink-2); line-height: 24px; }
+.lrow .track { grid-area: bar; position: relative; height: 24px; }
+.fill { display: flex; gap: 2px; height: 24px; }
+.fill .s { flex-basis: 0; min-width: 0; transition: opacity .15s; }
+.fill .s:last-child { border-radius: 0 4px 4px 0; }
+.capline { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); z-index: 2; }
+.lrow .meta { grid-area: meta; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--ink-2); }
+@media (min-width: 640px) and (max-width: 860px) { .lrow { grid-template-columns: 38px minmax(0, 1fr) 214px; grid-template-areas: "day bar meta"; gap: 8px 14px; } }
+@media (min-width: 1021px) { .lrow { grid-template-columns: 38px minmax(0, 1fr) 214px; grid-template-areas: "day bar meta"; gap: 8px 14px; } }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { color: var(--ok); background: var(--ok-bg); } .pill.warn { color: var(--warn); background: var(--warn-bg); } .pill.crit { color: var(--crit); background: var(--crit-bg); }
+
+/* table */
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; }
+th, td { padding: 7px 10px; text-align: right; border-top: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; border-top: 0; }
+tfoot td { font-weight: 600; border-top: 1px solid var(--line); }
+td .sw { margin-right: 8px; vertical-align: -1px; }
+td.over { color: var(--crit); font-weight: 600; }
+details.tbl summary { cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+details.tbl .scroll-x { margin-top: 14px; }
+
+/* empty / loading */
+.empty { text-align: center; padding: 56px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.empty p { color: var(--ink-2); max-width: 44ch; margin: 0; }
+
+.dim { opacity: .28; }
+#tip { position: fixed; z-index: 50; pointer-events: none; max-width: 240px; background: var(--ink); color: var(--bg); padding: 7px 10px; border-radius: 6px; font-size: 12px; line-height: 1.4; opacity: 0; transition: opacity .1s; }
+#tip.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="root">
+  <header class="hd">
+    <div>
+      <div class="eyebrow">Plan, move, compare</div>
+      <h1>Weekly load planner</h1>
+      <p class="sub">Build your week by dragging blocks, then see the hours, effort and room to spare. Changes save automatically.</p>
+    </div>
+    <div class="seg-toggle" id="theme" role="group" aria-label="Colour theme">
+      <button type="button" data-th="system" aria-pressed="true">Auto</button>
+      <button type="button" data-th="light" aria-pressed="false">Light</button>
+      <button type="button" data-th="dark" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+  <div class="seg-toggle tabs" id="view-tabs" role="group" aria-label="View">
+    <button type="button" data-view="schedule" aria-pressed="true">Schedule</button>
+    <button type="button" data-view="money" aria-pressed="false">Money</button>
+  </div>
+
+  <div class="bar" id="bar" hidden>
+    <div class="plan">
+      <label for="plan-sel" class="eyebrow">Plan</label>
+      <select id="plan-sel" class="in"></select>
+    </div>
+    <div class="acts">
+      <button type="button" class="btn" id="b-new">New</button>
+      <button type="button" class="btn" id="b-copy">Copy</button>
+      <button type="button" class="btn" id="b-del">Delete</button>
+      <button type="button" class="btn" id="b-undo">Undo</button>
+      <button type="button" class="btn" id="b-csv" hidden>Export CSV</button>
+      <button type="button" class="btn" id="b-backup">Backup</button>
+      <button type="button" class="btn" id="b-restore">Restore</button>
+    </div>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+  </div>
+  <div class="banner" id="banner" hidden></div>
+
+  <section id="loading" class="empty" aria-live="polite">
+    <h2>Loading your plans</h2>
+    <p>Connecting to your saved schedule.</p>
+  </section>
+
+  <section id="none" class="empty" hidden>
+    <h2>No plans yet</h2>
+    <p>A plan is one week of blocks: classes, work, training, anything with a start and an end. You can keep several, for example one per term, and copy one to start the next.</p>
+    <button type="button" class="btn solid" id="b-first">Create your first plan</button>
+    <button type="button" class="btn" id="b-restore2">Restore a backup</button>
+  </section>
+
+  <div id="app" hidden style="display:contents">
+    <div class="controls">
+      <span class="eyebrow" id="metric-lbl">Show</span>
+      <div class="seg-toggle" role="group" aria-labelledby="metric-lbl">
+        <button type="button" id="m-hours" aria-pressed="true">Hours</button>
+        <button type="button" id="m-effort" aria-pressed="false">Effort</button>
+      </div>
+    </div>
+
+    <details class="settings" id="settings">
+      <summary>Plan settings: name, week, hours in a day, categories and effort weights</summary>
+      <div id="settings-body"></div>
+    </details>
+
+    <section class="kpis" id="kpis" aria-label="Summary"></section>
+    <ul class="insights" id="insights"></ul>
+
+    <section class="panel" id="tlpanel">
+      <div class="panel-h">
+        <h2>The week</h2>
+        <div class="legend" id="legend-a"></div>
+      </div>
+      <p class="hint" id="hint">Drag a block to move it, drag its ends to resize, click or drag on empty space to add one. On a phone, tap a block first, then drag it.</p>
+      <div class="scroll-x" id="tlscroll"><div class="tl" id="tl" role="group" aria-label="Weekly timeline, one row per day"></div></div>
+      <div class="editor" id="editor"></div>
+    </section>
+
+    <div class="two">
+      <section class="panel">
+        <div class="panel-h"><h2>Where the hours go</h2></div>
+        <div class="donut-wrap">
+          <div class="donut" role="img" aria-label="Share of the week by category">
+            <svg viewBox="0 0 200 200" id="donut-svg"></svg>
+            <div class="donut-center"><div class="big num" id="d-big"></div><div class="cap" id="d-cap"></div></div>
+          </div>
+          <div class="dlegend" id="dlegend"></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-h">
+          <h2>Load against capacity</h2>
+          <div class="legend" id="legend-b"></div>
+        </div>
+        <div id="load" role="img" aria-label="Daily load against usable capacity"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <details class="tbl">
+        <summary>Table view</summary>
+        <div class="scroll-x" id="table"></div>
+      </details>
+    </section>
+  </div>
+
+  <div id="money" hidden style="display:contents">
+    <div class="mnav">
+      <button type="button" class="btn" id="m-prev" aria-label="Previous month">‹</button>
+      <h2 id="m-title"></h2>
+      <button type="button" class="btn" id="m-next" aria-label="Next month">›</button>
+      <button type="button" class="btn" id="m-now">This month</button>
+      <span class="grow"></span>
+      <span class="eyebrow" id="m-base"></span>
+    </div>
+    <div class="banner" id="m-warn" hidden></div>
+    <section class="kpis" id="m-kpis" aria-label="Month summary"></section>
+    <ul class="insights" id="m-insights"></ul>
+
+    <section class="panel">
+      <div class="panel-h"><h2 id="m-form-h">Log an expense</h2></div>
+      <form id="m-form" autocomplete="off">
+        <div class="egrid">
+          <div class="fld"><label for="x-date">Date</label><input type="date" class="in" id="x-date" required></div>
+          <div class="fld"><label for="x-amt">Amount</label><input type="number" class="in" id="x-amt" inputmode="decimal" min="0" step="any" required placeholder="0"></div>
+          <div class="fld"><label for="x-cur">Currency</label><input type="text" class="in" id="x-cur" list="curs" maxlength="3" style="text-transform:uppercase"></div>
+          <div class="fld"><label for="x-cat">Category</label><select class="in" id="x-cat"></select></div>
+          <div class="fld"><label>In your main currency</label><span id="x-conv" class="num" style="padding:8px 0;color:var(--ink-2)">–</span></div>
+          <div class="fld wide"><label for="x-note">Note</label><input type="text" class="in" id="x-note" maxlength="60" placeholder="optional"></div>
+        </div>
+        <div class="erow"><button type="submit" class="btn solid" id="x-save">Add expense</button><button type="button" class="btn" id="x-cancel" hidden>Cancel edit</button></div>
+      </form>
+      <datalist id="curs"><option>EGP</option><option>USD</option><option>EUR</option><option>GBP</option><option>SAR</option><option>AED</option><option>KWD</option><option>QAR</option><option>CAD</option><option>AUD</option><option>TRY</option><option>JPY</option><option>CNY</option><option>INR</option></datalist>
+    </section>
+
+    <section class="panel">
+      <div class="panel-h"><h2>Spending day by day</h2><div class="legend" id="m-legend"></div></div>
+      <div id="m-daily" role="img" aria-label="Daily spending for the month, stacked by category"></div>
+    </section>
+
+    <div class="two">
+      <section class="panel">
+        <div class="panel-h"><h2>By category</h2></div>
+        <div id="m-cats"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-h"><h2>Six months</h2><div class="legend"><span><i class="kd" style="background:var(--c3)"></i>Income</span><span><i class="kd" style="background:var(--c2)"></i>Expenses</span></div></div>
+        <div class="trend" id="m-trend" role="img" aria-label="Income and expenses for the last six months"></div>
+        <p class="note">Number under each month is net (income minus expenses). Click a month to open it.</p>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-h"><h2>Income</h2><button type="button" class="btn" id="inc-add">Add income source</button></div>
+      <div id="m-income"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-h"><h2>Expense log</h2><span class="eyebrow" id="m-logcount"></span></div>
+      <div class="log" id="m-log"></div>
+    </section>
+
+    <details class="settings" id="m-settings">
+      <summary>Money settings: main currency, exchange rates, categories, budgets, recurring bills</summary>
+      <div id="m-settings-body"></div>
+    </details>
+  </div>
+</div>
+<input type="file" id="f-restore" accept=".json,application/json" hidden>
+<dialog id="onb" class="dlg" aria-labelledby="onb-h">
+  <h2 id="onb-h">Set up your week</h2>
+  <p class="dnote">Everything stays on this device. You can change all of this later.</p>
+  <div class="ob-grid">
+    <label for="ob-name">Plan name</label><input id="ob-name" type="text" class="in" value="My week" maxlength="40">
+    <label for="ob-cur">Your currency</label><input id="ob-cur" type="text" class="in" list="ob-curs" maxlength="3" value="USD" autocapitalize="characters" spellcheck="false">
+    <datalist id="ob-curs"><option value="USD"><option value="EUR"><option value="GBP"><option value="EGP"><option value="SAR"><option value="AED"><option value="KWD"><option value="QAR"><option value="CAD"><option value="AUD"><option value="INR"><option value="TRY"><option value="JPY"><option value="CHF"></datalist>
+    <label for="ob-ws">Week starts on</label><select id="ob-ws" class="in"><option value="6">Saturday</option><option value="0">Sunday</option><option value="1">Monday</option></select>
+    <label for="ob-t0">Day starts</label><select id="ob-t0" class="in"></select>
+    <label for="ob-t1">Day ends</label><select id="ob-t1" class="in"></select>
+    <label for="ob-up">Daily upkeep (meals, commute)</label><select id="ob-up" class="in"></select>
+    <label for="ob-tpl">Start from</label><select id="ob-tpl" class="in"></select>
+  </div>
+  <p class="dnote" id="ob-tn"></p>
+  <div class="dact"><button type="button" class="btn" id="ob-skip">Not now</button><button type="button" class="btn solid" id="ob-go">Create my plan</button></div>
+</dialog>
+<dialog id="imp" class="dlg" aria-labelledby="imp-h">
+  <h2 id="imp-h">Restore a backup</h2>
+  <p class="dnote" id="imp-sum"></p>
+  <p class="dnote">Replace removes what is on this device now. Merge keeps everything here and adds what is missing from the backup.</p>
+  <div class="dact"><button type="button" class="btn" id="imp-cancel">Cancel</button><button type="button" class="btn" id="imp-merge">Merge</button><button type="button" class="btn solid" id="imp-replace">Replace</button></div>
+</dialog>
+<div class="banner upd" id="upd" role="status" hidden>A new version is ready. <button type="button" class="btn" id="upd-go">Reload to update</button></div>
+<p class="foot" id="foot" hidden>Weekly Load Planner <span id="ver"></span> &middot; Your plans and money data stay on this device &middot; <a href="../" id="foot-home">About</a></p>
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  'use strict';
+  /* The public build flips this to true: no personal seed data, a first-run setup, and an on-device storage note. */
+  var PUBLIC = true;
+  var APP_VERSION = '1.0.0';
+  var JD = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var JS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var STEP = 0.5, ROWH = 40, LABW = 44, RPAD = 14;
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function fmt(n) { var r = Math.round(n * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); }
+  function hhmm(x) { var h = Math.floor(x + 1e-9), m = Math.round((x - h) * 60); return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; }
+  function pct(x) { return Math.round(x * 100) + '%'; }
+  function uid() { return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4); }
+  function clamp(v, a, b) { return Math.min(Math.max(v, a), b); }
+  /* Two-step removal: the first click arms the button, the second click within 4 seconds does it. */
+  function confirmTwice(btn, fn) {
+    if (btn.dataset.armed) { clearTimeout(btn._t); delete btn.dataset.armed; fn(); return; }
+    var orig = btn.textContent; btn.dataset.armed = '1'; btn.classList.add('armed');
+    btn.textContent = 'Confirm ' + orig.toLowerCase();
+    btn._t = setTimeout(function () { delete btn.dataset.armed; btn.classList.remove('armed'); btn.textContent = orig; }, 4000);
+  }
+
+  /* ---------- theme ---------- */
+  var THEME_KEY = 'wl-theme-v1';
+  function applyTheme(t) {
+    var r = document.documentElement;
+    if (t === 'light' || t === 'dark') r.setAttribute('data-theme', t); else { t = 'system'; r.removeAttribute('data-theme'); }
+    document.querySelectorAll('#theme button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.th === t); });
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+  }
+  var savedTheme = 'system'; try { savedTheme = localStorage.getItem(THEME_KEY) || 'system'; } catch (e) {}
+  applyTheme(savedTheme);
+  document.querySelectorAll('#theme button').forEach(function (b) { b.addEventListener('click', function () { applyTheme(b.dataset.th); }); });
+
+  /* ---------- state ---------- */
+  var plans = {}, activeId = null, db = null, dl = null, mode = 'loading';
+  var ui = { sel: null, metric: 'hours', ro: false, lastCat: null, delArmed: false };
+  var undo = {};            // planId -> [json]
+  var dirty = {}, saving = false, again = false, saveTimer = null, dragging = null;
+  var SEED = null;
+  var ACTIVE_KEY = 'wl-active-v2', LOCAL_KEY = 'wl-plans-v2', METRIC_KEY = 'wl-metric-v2';
+
+  try { var m = localStorage.getItem(METRIC_KEY); if (m === 'effort' || m === 'hours') ui.metric = m; } catch (e) {}
+
+  function blankPlan(name) {
+    return {
+      name: name || 'New plan', created: Date.now(), weekStart: 6, t0: 7.5, t1: 22, upkeep: 2,
+      cats: [
+        { id: 'c1', name: 'Work', w: 1, slot: 1 },
+        { id: 'c2', name: 'Study', w: 1.25, slot: 2 },
+        { id: 'c3', name: 'Training', w: 1, slot: 3 }
+      ],
+      blocks: []
+    };
+  }
+  function normalize(d) {
+    var b = blankPlan(String(d && d.name || 'Untitled'));
+    d = d || {};
+    var p = {
+      name: b.name, created: Number(d.created) || Date.now(),
+      weekStart: clamp(parseInt(d.weekStart, 10) || 0, 0, 6),
+      t0: isFinite(d.t0) ? Number(d.t0) : b.t0, t1: isFinite(d.t1) ? Number(d.t1) : b.t1,
+      upkeep: isFinite(d.upkeep) ? Number(d.upkeep) : 2, cats: [], blocks: []
+    };
+    (Array.isArray(d.cats) ? d.cats : []).forEach(function (c) {
+      if (c && c.id) p.cats.push({ id: String(c.id), name: String(c.name || 'Category'), w: clamp(Number(c.w) || 1, 0.5, 2), slot: clamp(parseInt(c.slot, 10) || 1, 1, 8) });
+    });
+    if (!p.cats.length) p.cats = b.cats;
+    (Array.isArray(d.blocks) ? d.blocks : []).forEach(function (x) {
+      if (!x) return;
+      var cat = p.cats.some(function (c) { return c.id === x.c; }) ? x.c : p.cats[0].id;
+      var s = Number(x.s), e = Number(x.e);
+      if (!isFinite(s) || !isFinite(e) || e <= s) return;
+      p.blocks.push({ id: String(x.id || uid()), d: clamp(parseInt(x.d, 10) || 0, 0, 6), s: s, e: e, c: cat, t: String(x.t || '') });
+    });
+    return p;
+  }
+  function P() { return plans[activeId] || null; }
+  function order(p) { var o = []; for (var i = 0; i < 7; i++) o.push((p.weekStart + i) % 7); return o; }
+  function catIdx(p, id) { for (var i = 0; i < p.cats.length; i++) if (p.cats[i].id === id) return i; return 0; }
+  function cvar(c) { return 'var(--c' + c.slot + ')'; }
+  function ovar(c) { return 'var(--o' + c.slot + ')'; }
+  function findBlock(p, id) { for (var i = 0; i < p.blocks.length; i++) if (p.blocks[i].id === id) return p.blocks[i]; return null; }
+  function plain(p) { return JSON.parse(JSON.stringify(p)); }
+
+  /* ---------- saving ---------- */
+  function setStatus(txt, kind) {
+    var el = $('#status'); el.textContent = txt; el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function savedLabel() { return mode === 'db' ? 'Saved to your account' : 'Saved on this device only'; }
+  function scheduleSave(id) {
+    if (ui.ro) return;
+    dirty[id] = true; setStatus('Saving…');
+    clearTimeout(saveTimer); saveTimer = setTimeout(flush, 600);
+  }
+  function persistLocal() { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(plans)); } catch (e) {} }
+  async function persistOne(id) {
+    if (mode !== 'db') { persistLocal(); return; }
+    if (plans[id]) await db.doc('plans/' + id).set(plain(plans[id]));
+    else await db.doc('plans/' + id).delete();
+  }
+  async function flush() {
+    if (saving) { again = true; return; }
+    saving = true;
+    try {
+      var ids = Object.keys(dirty);
+      for (var i = 0; i < ids.length; i++) { delete dirty[ids[i]]; await persistOne(ids[i]); }
+      if (!Object.keys(dirty).length) setStatus(savedLabel(), 'ok');
+    } catch (e) {
+      setStatus('Could not save. Your changes are still here; edit again to retry.', 'bad');
+      Object.keys(plans).forEach(function (k) { dirty[k] = dirty[k] || false; });
+      Object.keys(dirty).forEach(function (k) { if (dirty[k] === false) delete dirty[k]; });
+    }
+    saving = false;
+    if (again || Object.keys(dirty).length) { again = false; flush(); }
+  }
+
+  /* ---------- mutations ---------- */
+  function pushUndo() {
+    var p = P(); if (!p) return;
+    var st = undo[activeId] = undo[activeId] || [];
+    st.push(JSON.stringify(plain(p))); if (st.length > 40) st.shift();
+    $('#b-undo').disabled = false;
+  }
+  function changed() { scheduleSave(activeId); }
+  function doUndo() {
+    if (ui.view === 'money') { mDoUndo(); return; }
+    var st = undo[activeId]; if (!st || !st.length || ui.ro) return;
+    plans[activeId] = normalize(JSON.parse(st.pop()));
+    if (ui.sel && !findBlock(P(), ui.sel)) ui.sel = null;
+    changed(); renderAll(true);
+  }
+
+  /* ---------- tooltip + highlight ---------- */
+  var tip = $('#tip');
+  function showTip(e) {
+    if (dragging && dragging.moved) { tip.classList.remove('on'); return; }
+    var el = e.target.closest ? e.target.closest('[data-tip]') : null;
+    hl(el && el.dataset.cat ? el.dataset.cat : null);
+    if (!el || e.pointerType === 'touch') { tip.classList.remove('on'); return; }
+    tip.innerHTML = el.dataset.tip; tip.classList.add('on');
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = Math.min(e.clientX + 14, window.innerWidth - w - 8), y = e.clientY + 16;
+    if (y + h > window.innerHeight - 8) y = e.clientY - h - 12;
+    tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+  }
+  document.addEventListener('pointermove', showTip);
+  document.addEventListener('pointerleave', function () { tip.classList.remove('on'); hl(null); });
+  function hl(id) {
+    document.querySelectorAll('[data-cat]').forEach(function (el) { el.classList.toggle('dim', !!id && el.dataset.cat !== id); });
+  }
+
+  /* ---------- calc ---------- */
+  function calc(p) {
+    var o = order(p), span = p.t1 - p.t0;
+    var H = o.map(function () { return p.cats.map(function () { return 0; }); });
+    p.blocks.forEach(function (b) { var pos = o.indexOf(b.d); H[pos][catIdx(p, b.c)] += (Math.min(b.e, p.t1) - Math.max(b.s, p.t0)); });
+    var r = { H: H, o: o, dayLoad: [], dayHours: [], dayEffort: [], catTot: p.cats.map(function () { return 0; }), catHours: p.cats.map(function () { return 0; }) };
+    o.forEach(function (_, d) {
+      var l = 0, h = 0, e = 0;
+      p.cats.forEach(function (c, ci) {
+        var v = val(p, H, d, ci); l += v; h += H[d][ci]; e += H[d][ci] * c.w;
+        r.catTot[ci] += v; r.catHours[ci] += H[d][ci];
+      });
+      r.dayLoad.push(l); r.dayHours.push(h); r.dayEffort.push(e);
+    });
+    var sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+    r.load = sum(r.dayLoad); r.hours = sum(r.dayHours); r.effort = sum(r.dayEffort);
+    r.usable = Math.max(span - p.upkeep, 0); r.cap = r.usable * 7;
+    return r;
+  }
+  function val(p, H, d, ci) { return ui.metric === 'effort' ? H[d][ci] * p.cats[ci].w : H[d][ci]; }
+  function unit() { return ui.metric === 'effort' ? ' effort-h' : 'h'; }
+  function clashes(p) {
+    var ids = {}, days = {};
+    for (var d = 0; d < 7; d++) {
+      var l = p.blocks.filter(function (b) { return b.d === d; }).sort(function (a, b) { return a.s - b.s; });
+      for (var i = 1; i < l.length; i++) {
+        if (l[i].s < l[i - 1].e - 1e-9) { ids[l[i].id] = ids[l[i - 1].id] = true; days[d] = true; }
+      }
+    }
+    return { ids: ids, days: days };
+  }
+
+  /* ---------- plan bar + chrome ---------- */
+  function sortedIds() {
+    return Object.keys(plans).sort(function (a, b) { return (plans[a].created - plans[b].created) || (a < b ? -1 : 1); });
+  }
+  function renderBar() {
+    var ids = sortedIds();
+    var sel = $('#plan-sel');
+    sel.innerHTML = ids.map(function (id) { return '<option value="' + id + '">' + esc(plans[id].name) + '</option>'; }).join('');
+    sel.value = activeId;
+    var st = undo[activeId], inMoney = ui.view === 'money';
+    $('#b-undo').disabled = ui.ro || (inMoney ? !mUndo.length : (!st || !st.length));
+    ['.bar .plan', '#b-new', '#b-copy', '#b-del'].forEach(function (q) { $(q).hidden = inMoney; });
+    ['#b-new', '#b-copy'].forEach(function (s) { $(s).disabled = ui.ro; });
+    $('#b-del').disabled = ui.ro;
+    $('#b-del').textContent = ui.delArmed ? 'Confirm delete' : 'Delete';
+    $('#b-del').classList.toggle('armed', ui.delArmed);
+  }
+  function ensureActive() {
+    var ids = sortedIds();
+    if (!ids.length) { activeId = null; return; }
+    if (!plans[activeId]) {
+      var saved = null; try { saved = localStorage.getItem(ACTIVE_KEY); } catch (e) {}
+      activeId = plans[saved] ? saved : ids[0];
+    }
+  }
+  function setActive(id) {
+    activeId = id; ui.sel = null; ui.delArmed = false;
+    try { localStorage.setItem(ACTIVE_KEY, id); } catch (e) {}
+    renderAll(true);
+  }
+
+  function timeOpts(from, to, cur) {
+    var o = '';
+    for (var t = from; t <= to + 1e-9; t += STEP) o += '<option value="' + t + '"' + (Math.abs(t - cur) < 1e-9 ? ' selected' : '') + '>' + hhmm(t) + '</option>';
+    return o;
+  }
+  function buildSettings() {
+    var p = P(); if (!p) return;
+    var minS = p.blocks.length ? Math.min.apply(null, p.blocks.map(function (b) { return b.s; })) : 12;
+    var maxE = p.blocks.length ? Math.max.apply(null, p.blocks.map(function (b) { return b.e; })) : 12;
+    var used = {}; p.blocks.forEach(function (b) { used[b.c] = (used[b.c] || 0) + 1; });
+    var ro = ui.ro ? ' disabled' : '';
+    var h = '<div class="sgrid">' +
+      '<div class="fld"><label for="p-name">Plan name</label><input type="text" class="in" id="p-name" maxlength="60" value="' + esc(p.name) + '"' + ro + '></div>' +
+      '<div class="fld"><label for="p-ws">Week starts on</label><select class="in" id="p-ws"' + ro + '>' + JD.map(function (n, i) { return '<option value="' + i + '"' + (i === p.weekStart ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></div>' +
+      '<div class="fld"><label for="p-t0">Day starts</label><select class="in" id="p-t0"' + ro + '>' + timeOpts(0, Math.min(minS, 12), p.t0) + '</select></div>' +
+      '<div class="fld"><label for="p-t1">Day ends</label><select class="in" id="p-t1"' + ro + '>' + timeOpts(Math.max(maxE, 12), 24, p.t1) + '</select></div>' +
+      '<div class="fld"><label for="p-up">Daily upkeep: meals, commute, rest</label><div class="row"><input type="range" id="p-up" min="0" max="6" step="0.25" value="' + p.upkeep + '"' + ro + '><span class="val" id="p-upv">' + fmt(p.upkeep) + 'h</span></div></div>' +
+      '</div>' +
+      '<div class="cats"><h3 class="eyebrow" style="font-family:var(--font-body)">Categories and effort weights</h3>' +
+      p.cats.map(function (c) {
+        var inUse = used[c.id] || 0;
+        return '<div class="crow"><i class="sw" style="background:' + cvar(c) + '"></i>' +
+          '<input type="text" class="in" id="cn-' + c.id + '" aria-label="Category name" maxlength="30" value="' + esc(c.name) + '"' + ro + '>' +
+          '<div class="wr"><input type="range" id="cw-' + c.id + '" aria-label="Effort weight for ' + esc(c.name) + '" min="0.5" max="2" step="0.25" value="' + c.w + '"' + ro + '></div>' +
+          '<span class="val" id="cv-' + c.id + '">×' + c.w + '</span>' +
+          '<button type="button" class="btn" data-delcat="' + c.id + '"' + (ui.ro || inUse || p.cats.length < 2 ? ' disabled title="' + (inUse ? 'Used by ' + inUse + ' block' + (inUse > 1 ? 's' : '') : 'Keep at least one') + '"' : '') + '>Remove</button></div>';
+      }).join('') +
+      '<div class="erow"><button type="button" class="btn" id="cat-add"' + (ui.ro || p.cats.length >= 8 ? ' disabled' : '') + '>Add category</button></div>' +
+      '<p class="note">Weights are how draining an hour of that kind feels: 1 is ordinary, 1.5 counts as an hour and a half of effort. The Effort view and the capacity check use them. Starting values are guesses; set your own.</p></div>';
+    $('#settings-body').innerHTML = h;
+
+    $('#p-name').addEventListener('input', function (e) { P().name = e.target.value || 'Untitled'; changed(); renderBar(); });
+    $('#p-ws').addEventListener('change', function (e) { pushUndo(); P().weekStart = parseInt(e.target.value, 10); changed(); renderAll(false); });
+    $('#p-t0').addEventListener('change', function (e) { pushUndo(); P().t0 = parseFloat(e.target.value); changed(); renderAll(true); });
+    $('#p-t1').addEventListener('change', function (e) { pushUndo(); P().t1 = parseFloat(e.target.value); changed(); renderAll(true); });
+    $('#p-up').addEventListener('input', function (e) { P().upkeep = parseFloat(e.target.value); $('#p-upv').textContent = fmt(P().upkeep) + 'h'; changed(); refresh(); });
+    p.cats.forEach(function (c) {
+      $('#cn-' + c.id).addEventListener('input', function (e) { c.name = e.target.value || 'Category'; changed(); refresh(); buildEditor(); });
+      $('#cw-' + c.id).addEventListener('input', function (e) { c.w = parseFloat(e.target.value); $('#cv-' + c.id).textContent = '×' + c.w; changed(); refresh(); });
+    });
+    document.querySelectorAll('[data-delcat]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        confirmTwice(b, function () {
+          pushUndo(); var pp = P(); pp.cats = pp.cats.filter(function (c) { return c.id !== b.dataset.delcat; });
+          changed(); buildSettings(); renderAll(false);
+        });
+      });
+    });
+    $('#cat-add').addEventListener('click', function () {
+      var pp = P(), taken = {}; pp.cats.forEach(function (c) { taken[c.slot] = true; });
+      var slot = 1; while (taken[slot] && slot < 8) slot++;
+      pushUndo(); pp.cats.push({ id: 'c' + uid(), name: 'New category', w: 1, slot: slot });
+      changed(); buildSettings(); renderAll(false);
+    });
+  }
+
+  /* ---------- editor panel ---------- */
+  function buildEditor() {
+    var p = P(), host = $('#editor'); if (!p) return;
+    var b = ui.sel ? findBlock(p, ui.sel) : null;
+    if (!b) {
+      host.innerHTML = '<p class="none">' + (ui.ro ? 'This plan is read-only.' : 'Select a block to rename it, change its category, or set exact times. Select a day chip afterwards to copy it there.') + '</p>';
+      return;
+    }
+    var ro = ui.ro ? ' disabled' : '';
+    var o = order(p);
+    host.innerHTML =
+      '<div class="egrid">' +
+      '<div class="fld wide"><label for="e-t">Title</label><input type="text" class="in" id="e-t" maxlength="40" value="' + esc(b.t) + '" placeholder="' + esc(p.cats[catIdx(p, b.c)].name) + '"' + ro + '></div>' +
+      '<div class="fld"><label for="e-c">Category</label><select class="in" id="e-c"' + ro + '>' + p.cats.map(function (c) { return '<option value="' + c.id + '"' + (c.id === b.c ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="fld"><label for="e-d">Day</label><select class="in" id="e-d"' + ro + '>' + o.map(function (d) { return '<option value="' + d + '"' + (d === b.d ? ' selected' : '') + '>' + JD[d] + '</option>'; }).join('') + '</select></div>' +
+      '<div class="fld"><label for="e-s">Start</label><select class="in" id="e-s"' + ro + '>' + timeOpts(p.t0, p.t1 - STEP, b.s) + '</select></div>' +
+      '<div class="fld"><label for="e-e">End</label><select class="in" id="e-e"' + ro + '>' + timeOpts(p.t0 + STEP, p.t1, b.e) + '</select></div>' +
+      '</div>' +
+      '<div class="erow"><span class="eyebrow">Copy to</span>' + o.filter(function (d) { return d !== b.d; }).map(function (d) { return '<button type="button" class="chip" data-copy="' + d + '"' + ro + '>' + JS[d] + '</button>'; }).join('') +
+      '<span style="flex:1"></span><span class="num" id="e-dur" style="color:var(--ink-2)"></span><button type="button" class="btn" id="e-del"' + ro + '>Delete block</button></div>';
+    syncEditor();
+    if (ui.ro) return;
+    $('#e-t').addEventListener('focus', function () { pushUndo(); }, { once: true });
+    $('#e-t').addEventListener('input', function (e) { var bb = findBlock(P(), ui.sel); bb.t = e.target.value; changed(); refreshTimeline(); });
+    $('#e-c').addEventListener('change', function (e) { pushUndo(); var bb = findBlock(P(), ui.sel); bb.c = e.target.value; ui.lastCat = bb.c; changed(); renderAll(false); });
+    $('#e-d').addEventListener('change', function (e) { pushUndo(); var bb = findBlock(P(), ui.sel); bb.d = parseInt(e.target.value, 10); changed(); renderAll(false); });
+    $('#e-s').addEventListener('change', function (e) {
+      pushUndo(); var bb = findBlock(P(), ui.sel); bb.s = parseFloat(e.target.value); if (bb.e <= bb.s) bb.e = bb.s + STEP;
+      changed(); syncEditor(); renderAll(false);
+    });
+    $('#e-e').addEventListener('change', function (e) {
+      pushUndo(); var bb = findBlock(P(), ui.sel); bb.e = parseFloat(e.target.value); if (bb.s >= bb.e) bb.s = bb.e - STEP;
+      changed(); syncEditor(); renderAll(false);
+    });
+    $('#e-del').addEventListener('click', function (e) { confirmTwice(e.currentTarget, deleteSelected); });
+    document.querySelectorAll('[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var pp = P(), src = findBlock(pp, ui.sel), d = parseInt(btn.dataset.copy, 10);
+        if (pp.blocks.some(function (x) { return x.d === d && x.c === src.c && x.s === src.s && x.e === src.e; })) { setStatus('Already on ' + JD[d] + '.'); return; }
+        pushUndo(); pp.blocks.push({ id: uid(), d: d, s: src.s, e: src.e, c: src.c, t: src.t });
+        changed(); renderAll(false); setStatus('Copied to ' + JD[d] + '.');
+      });
+    });
+  }
+  function syncEditor() {
+    var p = P(), b = ui.sel && p ? findBlock(p, ui.sel) : null; if (!b || !$('#e-s')) return;
+    $('#e-s').value = String(b.s); $('#e-e').value = String(b.e); $('#e-d').value = String(b.d);
+    $('#e-dur').textContent = fmt(b.e - b.s) + 'h · ' + hhmm(b.s) + '–' + hhmm(b.e);
+  }
+  function deleteSelected() {
+    var p = P(); if (!p || !ui.sel || ui.ro) return;
+    pushUndo(); p.blocks = p.blocks.filter(function (b) { return b.id !== ui.sel; });
+    ui.sel = null; changed(); renderAll(true);
+  }
+  function select(id) {
+    ui.sel = id;
+    document.querySelectorAll('.blk').forEach(function (el) { el.classList.toggle('sel', el.dataset.id === id); });
+    buildEditor();
+  }
+
+  /* ---------- timeline ---------- */
+  function renderTimeline() {
+    var p = P(), host = $('#tl'); if (!p) return;
+    var span = p.t1 - p.t0, o = order(p), cl = clashes(p);
+    var trackW = Math.max(host.clientWidth - LABW - RPAD, 100);
+    var grid = '', ticks = '';
+    for (var h = Math.ceil(p.t0); h <= p.t1; h++) if (h >= p.t0) grid += '<i style="left:' + ((h - p.t0) / span * 100) + '%"></i>';
+    for (var t = Math.ceil(p.t0 / 2) * 2; t <= p.t1; t += 2) ticks += '<span class="' + (t >= p.t1 - 0.01 ? 'last' : '') + '" style="left:' + ((t - p.t0) / span * 100) + '%">' + hhmm(t) + '</span>';
+    var today = o.indexOf(new Date().getDay());
+    var rows = o.map(function (d, pos) {
+      var blocks = p.blocks.filter(function (b) { return b.d === d; }).map(function (b) { return blockHTML(p, b, span, trackW, cl); }).join('');
+      return '<div class="tl-row" data-d="' + d + '"><div class="tl-day' + (pos === today ? ' today' : '') + '">' + JS[d] + '</div>' + blocks + '</div>';
+    }).join('');
+    host.innerHTML = '<div class="tl-axis">' + ticks + '</div><div class="tl-plot">' + grid + '</div>' + rows + '<div id="now"></div>';
+    placeNow();
+    host.classList.toggle('ro', ui.ro);
+    if (ui.sel && dragging === null && document.activeElement === document.body) { /* keep focus out of the way */ }
+  }
+  function blockHTML(p, b, span, trackW, cl) {
+    var c = p.cats[catIdx(p, b.c)], dur = b.e - b.s, wPx = dur / span * trackW;
+    var title = b.t || c.name, label = '';
+    var cands = [title, title.split(' ')[0]];
+    for (var i = 0; i < cands.length; i++) { if (cands[i] && cands[i].length * 6.8 + 18 <= wPx) { label = cands[i]; break; } }
+    var tipTxt = '<b>' + esc(title) + '</b><br>' + JD[b.d] + ' · ' + hhmm(b.s) + '–' + hhmm(b.e) + '<br>' + esc(c.name) + ' · ' + fmt(dur) + 'h';
+    return '<div class="blk' + (b.id === ui.sel ? ' sel' : '') + (cl.ids[b.id] ? ' clash' : '') + '" tabindex="0" role="button" aria-label="' + esc(title) + ', ' + JD[b.d] + ' ' + hhmm(b.s) + ' to ' + hhmm(b.e) + '" data-id="' + b.id + '" data-cat="' + c.id + '" data-tip="' + esc(tipTxt) + '" style="left:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);width:calc(' + (dur / span * 100) + '% - 2px);background:' + cvar(c) + ';color:' + ovar(c) + '"><span class="grip l" data-g="l"></span><span class="lbl">' + esc(label) + '</span><span class="grip r" data-g="r"></span></div>';
+  }
+  function placeNow() {
+    var el = $('#now'), p = P(); if (!el || !p) return;
+    var n = new Date(), x = n.getHours() + n.getMinutes() / 60;
+    if (x < p.t0 || x > p.t1) { el.style.display = 'none'; return; }
+    el.className = 'tl-now'; el.style.display = '';
+    el.style.left = 'calc(' + LABW + 'px + (100% - ' + (LABW + RPAD) + 'px) * ' + ((x - p.t0) / (p.t1 - p.t0)) + ' - 1px)';
+  }
+  function refreshTimeline() { renderTimeline(); }
+
+  /* pointer interaction */
+  var tl = $('#tl');
+  function rowAt(clientY) {
+    var first = tl.querySelector('.tl-row'); if (!first) return null;
+    var top = first.getBoundingClientRect().top;
+    var idx = clamp(Math.floor((clientY - top) / ROWH), 0, 6);
+    return tl.querySelectorAll('.tl-row')[idx];
+  }
+  function hourAt(row, clientX, p) {
+    var r = row.getBoundingClientRect();
+    return p.t0 + clamp((clientX - r.left) / r.width, 0, 1) * (p.t1 - p.t0);
+  }
+  tl.addEventListener('pointerdown', function (e) {
+    var p = P(); if (!p || ui.ro || e.button > 0) return;
+    var row = e.target.closest('.tl-row'); if (!row) return;
+    var blkEl = e.target.closest('.blk');
+    dragging = { pid: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, row: row, p: p };
+    if (blkEl) {
+      var b = findBlock(p, blkEl.dataset.id); if (!b) { dragging = null; return; }
+      select(b.id);
+      dragging.type = e.target.dataset && e.target.dataset.g === 'l' ? 'rl' : e.target.dataset && e.target.dataset.g === 'r' ? 'rr' : 'move';
+      dragging.id = b.id; dragging.orig = { d: b.d, s: b.s, e: b.e };
+      dragging.el = blkEl;
+    } else {
+      dragging.type = 'create'; dragging.d = parseInt(row.dataset.d, 10);
+      dragging.start = Math.floor(hourAt(row, e.clientX, p) / STEP) * STEP;
+    }
+    try { tl.setPointerCapture(e.pointerId); } catch (er) {}
+  });
+  tl.addEventListener('pointermove', function (e) {
+    var g = dragging; if (!g || e.pointerId !== g.pid) return;
+    var p = g.p, dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (!g.moved && Math.hypot(dx, dy) < 5) return;
+    var span = p.t1 - p.t0, rowW = g.row.clientWidth, dh = Math.round(dx / rowW * span / STEP) * STEP;
+    if (!g.moved) { g.moved = true; if (g.type !== 'create') { pushUndo(); } }
+    tip.classList.remove('on');
+    if (g.type === 'create') {
+      var cur = Math.floor(hourAt(g.row, e.clientX, p) / STEP) * STEP;
+      var a = Math.min(g.start, cur), z = Math.max(g.start, cur) + STEP;
+      z = Math.min(z, p.t1); g.s = a; g.e = Math.max(z, a + STEP);
+      var gh = g.row.querySelector('.ghost');
+      if (!gh) { gh = document.createElement('div'); gh.className = 'ghost'; g.row.appendChild(gh); }
+      gh.style.left = 'calc(' + ((g.s - p.t0) / span * 100) + '% + 1px)'; gh.style.width = 'calc(' + ((g.e - g.s) / span * 100) + '% - 2px)';
+      return;
+    }
+    var b = findBlock(p, g.id), o = g.orig, dur = o.e - o.s;
+    if (g.type === 'move') {
+      b.s = clamp(o.s + dh, p.t0, p.t1 - dur); b.e = b.s + dur;
+      var rowEl = rowAt(e.clientY);
+      if (rowEl) { b.d = parseInt(rowEl.dataset.d, 10); if (g.el.parentNode !== rowEl) rowEl.appendChild(g.el); }
+    } else if (g.type === 'rl') { b.s = clamp(o.s + dh, p.t0, o.e - STEP); }
+    else { b.e = clamp(o.e + dh, o.s + STEP, p.t1); }
+    g.el.style.left = 'calc(' + ((b.s - p.t0) / span * 100) + '% + 1px)';
+    g.el.style.width = 'calc(' + ((b.e - b.s) / span * 100) + '% - 2px)';
+    syncEditor(); scheduleAnalytics();
+  });
+  function endDrag(e, cancel) {
+    var g = dragging; if (!g || e.pointerId !== g.pid) return;
+    dragging = null;
+    var p = g.p;
+    try { tl.releasePointerCapture(g.pid); } catch (er) {}
+    if (g.type === 'create') {
+      var gh = g.row.querySelector('.ghost'); if (gh) gh.remove();
+      if (cancel) return;
+      var s = g.moved ? g.s : g.start, en = g.moved ? g.e : g.start + 1;
+      s = clamp(s, p.t0, p.t1 - STEP); en = clamp(en, s + STEP, p.t1);
+      var cat = p.cats.some(function (c) { return c.id === ui.lastCat; }) ? ui.lastCat : p.cats[0].id;
+      pushUndo();
+      var nb = { id: uid(), d: g.d, s: s, e: en, c: cat, t: '' };
+      p.blocks.push(nb); ui.sel = nb.id; changed(); renderAll(true);
+      return;
+    }
+    if (cancel && g.moved) { var b0 = findBlock(p, g.id); if (b0) { b0.d = g.orig.d; b0.s = g.orig.s; b0.e = g.orig.e; } var st = undo[activeId]; if (st) st.pop(); renderAll(true); return; }
+    if (g.moved) { changed(); renderAll(true); }
+  }
+  tl.addEventListener('pointerup', function (e) { endDrag(e, false); });
+  tl.addEventListener('pointercancel', function (e) { endDrag(e, true); });
+  tl.addEventListener('keydown', function (e) {
+    var el = e.target.closest && e.target.closest('.blk'); var p = P(); if (!el || !p) return;
+    var b = findBlock(p, el.dataset.id); if (!b) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.id); return; }
+    if (ui.ro) return;
+    var o = order(p), pos = o.indexOf(b.d), dur = b.e - b.s, handled = true;
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); select(b.id); var dbtn = $('#e-del'); if (dbtn) { dbtn.focus(); dbtn.click(); } return; }
+    pushUndo();
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      var dir = e.key === 'ArrowLeft' ? -STEP : STEP;
+      if (e.shiftKey) b.e = clamp(b.e + dir, b.s + STEP, p.t1);
+      else { b.s = clamp(b.s + dir, p.t0, p.t1 - dur); b.e = b.s + dur; }
+    } else if (e.key === 'ArrowUp') b.d = o[clamp(pos - 1, 0, 6)];
+    else if (e.key === 'ArrowDown') b.d = o[clamp(pos + 1, 0, 6)];
+    else handled = false;
+    if (!handled) { var st = undo[activeId]; if (st) st.pop(); return; }
+    e.preventDefault(); ui.sel = b.id; changed(); renderAll(false);
+    var again2 = tl.querySelector('.blk[data-id="' + b.id + '"]'); if (again2) again2.focus();
+  });
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) { e.preventDefault(); doUndo(); }
+  });
+
+  /* ---------- analytics ---------- */
+  var anRaf = 0;
+  function scheduleAnalytics() { if (anRaf) return; anRaf = requestAnimationFrame(function () { anRaf = 0; renderAnalytics(); }); }
+  function renderAnalytics() {
+    var p = P(); if (!p) return;
+    var r = calc(p);
+    renderKpis(p, r); renderInsights(p, r); renderDonut(p, r); renderLoad(p, r); renderTable(p, r);
+  }
+  function renderKpis(p, r) {
+    var ratio = r.cap ? r.load / r.cap : 0, free = r.cap - r.load;
+    var tiles = [
+      ['Scheduled', fmt(r.hours) + '<small>h</small>', p.blocks.length + (p.blocks.length === 1 ? ' block' : ' blocks') + ' this week'],
+      ['Effort load', fmt(r.effort) + '<small>effort-h</small>', 'hours × how draining each feels'],
+      ['Usable capacity', fmt(r.cap) + '<small>h</small>', fmt(p.t1 - p.t0) + 'h day minus ' + fmt(p.upkeep) + 'h upkeep'],
+      [ui.metric === 'effort' ? 'Effort vs capacity' : 'Hours vs capacity', pct(ratio), free >= 0 ? fmt(free) + unit() + ' of room left' : 'over by ' + fmt(-free) + unit()]
+    ];
+    $('#kpis').innerHTML = tiles.map(function (t) { return '<div class="kpi"><span class="eyebrow">' + t[0] + '</span><span class="big">' + t[1] + '</span><span class="cap">' + t[2] + '</span></div>'; }).join('');
+  }
+  function renderInsights(p, r) {
+    var host = $('#insights'), u = r.usable, un = unit(), o = r.o;
+    if (!p.blocks.length) { host.innerHTML = '<li>Click empty space on the timeline to add your first block.</li>'; return; }
+    var hi = 0, lo = 0;
+    r.dayLoad.forEach(function (l, i) { if (l > r.dayLoad[hi]) hi = i; if (l < r.dayLoad[lo]) lo = i; });
+    var top = 0; r.catTot.forEach(function (t, i) { if (t > r.catTot[top]) top = i; });
+    var over = []; r.dayLoad.forEach(function (l, i) { if (l > u + 1e-9) over.push(JS[o[i]]); });
+    var cl = clashes(p), cd = Object.keys(cl.days).map(function (d) { return JS[d]; });
+    var items = [
+      ['', '<b>' + JD[o[hi]] + '</b> is the heaviest day: ' + fmt(r.dayLoad[hi]) + un + ' against ' + fmt(u) + 'h usable.'],
+      ['', '<b>' + JD[o[lo]] + '</b> has the most room: ' + fmt(Math.max(u - r.dayLoad[lo], 0)) + un + ' free.'],
+      ['', '<b>' + esc(p.cats[top].name) + '</b> takes the biggest share: ' + pct(r.load ? r.catTot[top] / r.load : 0) + ' of the week.'],
+      over.length ? ['warn', '<b>' + over.length + (over.length === 1 ? ' day</b> goes' : ' days</b> go') + ' over capacity: ' + over.join(', ') + '.'] : ['', '<b>No day</b> goes over usable capacity.']
+    ];
+    if (cd.length) items.push(['warn', '<b>Overlapping blocks</b> on ' + cd.join(', ') + ' (outlined in red). Their hours are counted twice.']);
+    host.innerHTML = items.map(function (t) { return '<li class="' + t[0] + '">' + t[1] + '</li>'; }).join('');
+  }
+  function legendHTML(p, withCap) {
+    return p.cats.map(function (c) { return '<span data-cat="' + c.id + '"><i class="sw" style="background:' + cvar(c) + '"></i>' + esc(c.name) + '</span>'; }).join('') + (withCap ? '<span><i class="capkey"></i>Usable capacity</span>' : '');
+  }
+  function renderDonut(p, r) {
+    var R = 76, C = 2 * Math.PI * R, gap = 3, acc = 0, svg = '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="var(--track)" stroke-width="30"></circle>';
+    p.cats.forEach(function (c, i) {
+      var v = r.catTot[i]; if (v <= 0 || !r.load) return;
+      var len = v / r.load * C, dash = Math.max(len - gap, 0.5);
+      svg += '<circle data-cat="' + c.id + '" data-tip="' + esc(c.name) + ': ' + fmt(v) + unit() + ' · ' + pct(v / r.load) + '" cx="100" cy="100" r="' + R + '" fill="none" stroke="' + cvar(c) + '" stroke-width="30" stroke-dasharray="' + dash + ' ' + (C - dash) + '" stroke-dashoffset="' + (-(acc + gap / 2)) + '" transform="rotate(-90 100 100)"></circle>';
+      acc += len;
+    });
+    $('#donut-svg').innerHTML = svg;
+    $('#d-big').textContent = fmt(r.load);
+    $('#d-cap').textContent = ui.metric === 'effort' ? 'effort-hours a week' : 'hours a week';
+    $('#dlegend').innerHTML = p.cats.map(function (c, i) {
+      var v = r.catTot[i];
+      return '<div class="dl-row" data-cat="' + c.id + '"><i class="sw" style="background:' + cvar(c) + '"></i><span class="nm">' + esc(c.name) + '</span><span class="num">' + fmt(v) + unit() + '</span><span class="pc num">' + pct(r.load ? v / r.load : 0) + '</span></div>';
+    }).join('');
+  }
+  function renderLoad(p, r) {
+    var u = r.usable, un = unit(), o = r.o;
+    var max = Math.max(u, Math.max.apply(null, r.dayLoad)) * 1.06 || 1;
+    $('#load').innerHTML = o.map(function (d, pos) {
+      var tot = r.dayLoad[pos];
+      var segs = p.cats.map(function (c, ci) {
+        var v = val(p, r.H, pos, ci); if (v <= 0) return '';
+        var tt = '<b>' + JD[d] + ' · ' + esc(c.name) + '</b><br>' + (ui.metric === 'effort' ? fmt(r.H[pos][ci]) + 'h × ' + c.w + ' = ' + fmt(v) + ' effort-h' : fmt(v) + 'h');
+        return '<div class="s" data-cat="' + c.id + '" data-tip="' + esc(tt) + '" style="flex-grow:' + v + ';background:' + cvar(c) + '"></div>';
+      }).join('');
+      var free = u - tot, ratio = u ? tot / u : 0, pill;
+      if (free < -1e-9) pill = '<span class="pill crit">▲ Over by ' + fmt(-free) + un + '</span>';
+      else if (ratio >= 0.9) pill = '<span class="pill warn">● Tight · ' + fmt(free) + un + ' free</span>';
+      else pill = '<span class="pill ok">✓ ' + fmt(free) + un + ' free</span>';
+      return '<div class="lrow"><div class="d">' + JS[d] + '</div><div class="track"><div class="fill" style="width:' + (tot / max * 100) + '%">' + segs + '</div><div class="capline" style="left:' + (u / max * 100) + '%"></div></div><div class="meta"><span class="num">' + fmt(tot) + ' / ' + fmt(u) + 'h</span>' + pill + '</div></div>';
+    }).join('');
+  }
+  function renderTable(p, r) {
+    var o = r.o;
+    var head = '<thead><tr><th>Category</th>' + o.map(function (d) { return '<th>' + JS[d] + '</th>'; }).join('') + '<th>Hours</th><th>Weight</th><th>Effort-h</th></tr></thead>';
+    var body = p.cats.map(function (c, ci) {
+      var tot = 0, cells = o.map(function (_, d) { tot += r.H[d][ci]; return '<td class="num">' + (r.H[d][ci] ? fmt(r.H[d][ci]) : '–') + '</td>'; }).join('');
+      return '<tr><td><i class="sw" style="background:' + cvar(c) + '"></i>' + esc(c.name) + '</td>' + cells + '<td class="num">' + fmt(tot) + '</td><td class="num">×' + c.w + '</td><td class="num">' + fmt(tot * c.w) + '</td></tr>';
+    }).join('');
+    var u = r.usable;
+    var tot = '<tr><td>Scheduled hours</td>' + r.dayHours.map(function (v) { return '<td class="num">' + fmt(v) + '</td>'; }).join('') + '<td class="num">' + fmt(r.hours) + '</td><td></td><td class="num">' + fmt(r.effort) + '</td></tr>';
+    var cap = '<tr><td>Usable capacity</td>' + o.map(function () { return '<td class="num">' + fmt(u) + '</td>'; }).join('') + '<td class="num">' + fmt(u * 7) + '</td><td></td><td class="num">' + fmt(u * 7) + '</td></tr>';
+    var fr = '<tr><td>Room left (hours)</td>' + r.dayHours.map(function (v) { var f = u - v; return '<td class="num' + (f < 0 ? ' over' : '') + '">' + fmt(f) + '</td>'; }).join('') + '<td class="num' + (u * 7 - r.hours < 0 ? ' over' : '') + '">' + fmt(u * 7 - r.hours) + '</td><td></td><td class="num' + (u * 7 - r.effort < 0 ? ' over' : '') + '">' + fmt(u * 7 - r.effort) + '</td></tr>';
+    $('#table').innerHTML = '<table>' + head + '<tbody>' + body + '</tbody><tfoot>' + tot + cap + fr + '</tfoot></table>';
+  }
+  function refresh() { renderAnalytics(); renderTimeline(); }
+
+  /* ---------- render ---------- */
+  function renderAll(rebuildSide) {
+    ensureActive();
+    var has = !!P();
+    $('#loading').hidden = mode !== 'loading';
+    var sched = ui.view === 'schedule';
+    $('#none').hidden = mode === 'loading' || has || !sched;
+    $('#app').hidden = !has || !sched; $('#bar').hidden = mode === 'loading';
+    $('#money').hidden = mode === 'loading' || sched;
+    document.querySelectorAll('#view-tabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.view === ui.view); });
+    $('#root').classList.toggle('ro', ui.ro);
+    $('#hint').hidden = ui.ro;
+    if (mode === 'loading') return;
+    renderBar();
+    if (!sched) { if (rebuildSide === false) renderMoney(); else buildMoney(); return; }
+    if (!has) return;
+    var p = P();
+    $('#m-hours').setAttribute('aria-pressed', ui.metric === 'hours');
+    $('#m-effort').setAttribute('aria-pressed', ui.metric === 'effort');
+    $('#legend-a').innerHTML = legendHTML(p, false); $('#legend-b').innerHTML = legendHTML(p, true);
+    if (rebuildSide !== false) { buildSettings(); }
+    else if (document.activeElement && /^(p-|cn-|cw-)/.test(document.activeElement.id || '')) { /* keep typing */ } else { buildSettings(); }
+    if (rebuildSide !== false || !$('#e-t') || document.activeElement !== $('#e-t')) buildEditor();
+    renderAnalytics(); renderTimeline();
+  }
+
+  /* ---------- top-level actions ---------- */
+  function newPlan(src, exact) {
+    var id = (db ? db.collection('plans').doc().id : uid());
+    var p = src ? normalize(plain(src)) : blankPlan('New plan');
+    if (src && !exact) { p.name = src.name + ' copy'; }
+    p.created = Date.now();
+    plans[id] = p; undo[id] = [];
+    activeId = id; ui.sel = null; ui.delArmed = false;
+    try { localStorage.setItem(ACTIVE_KEY, id); } catch (e) {}
+    dirty[id] = true; scheduleSave(id); mode = mode === 'loading' ? 'local' : mode;
+    renderAll(true);
+  }
+  $('#b-new').addEventListener('click', function () { newPlan(null); $('#settings').open = true; setStatus('New plan created. Name it under Plan settings.'); });
+  $('#b-first').addEventListener('click', function () { if (PUBLIC) openOnboarding(); else newPlan(null); });
+  $('#b-copy').addEventListener('click', function () { if (P()) newPlan(P()); });
+  var armTimer = null;
+  $('#b-del').addEventListener('click', function () {
+    if (!P() || ui.ro) return;
+    if (!ui.delArmed) { ui.delArmed = true; renderBar(); clearTimeout(armTimer); armTimer = setTimeout(function () { ui.delArmed = false; renderBar(); }, 4000); return; }
+    clearTimeout(armTimer); ui.delArmed = false;
+    var id = activeId; delete plans[id]; delete undo[id]; activeId = null; ui.sel = null;
+    scheduleSave(id); renderAll(true);
+  });
+  $('#b-undo').addEventListener('click', doUndo);
+  $('#plan-sel').addEventListener('change', function (e) { setActive(e.target.value); });
+  $('#m-hours').addEventListener('click', function () { ui.metric = 'hours'; try { localStorage.setItem(METRIC_KEY, 'hours'); } catch (e) {} renderAll(false); });
+  $('#m-effort').addEventListener('click', function () { ui.metric = 'effort'; try { localStorage.setItem(METRIC_KEY, 'effort'); } catch (e) {} renderAll(false); });
+  function csvOf(rows) { return rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n'); }
+  async function saveFile(name, text, mime) {
+    try {
+      if (dl) { await dl.save({ filename: name, data: text }); }
+      else {
+        var url = URL.createObjectURL(new Blob([text], { type: mime || 'text/csv;charset=utf-8' }));
+        var a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      }
+      setStatus(mime ? 'Backup saved.' : 'Exported.', 'ok');
+    } catch (e) { if (!e || e.code !== 'declined') setStatus('Export is not available here.', 'bad'); }
+  }
+  $('#b-csv').addEventListener('click', function () {
+    if (ui.view === 'money') { saveFile('expenses-' + ui.month + '.csv', exportMoneyCSV()); return; }
+    var p = P(); if (!p) return;
+    var rows = [['Day', 'Start', 'End', 'Hours', 'Category', 'Title']];
+    p.blocks.slice().sort(function (a, b) { return order(p).indexOf(a.d) - order(p).indexOf(b.d) || a.s - b.s; }).forEach(function (b) {
+      rows.push([JD[b.d], hhmm(b.s), hhmm(b.e), fmt(b.e - b.s), p.cats[catIdx(p, b.c)].name, b.t || p.cats[catIdx(p, b.c)].name]);
+    });
+    saveFile((p.name || 'plan').replace(/[^\w\- ]+/g, '') + '.csv', csvOf(rows));
+  });
+  document.querySelectorAll('#view-tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      ui.view = b.dataset.view; ui.delArmed = false; try { localStorage.setItem(VIEW_KEY, ui.view); } catch (e) {}
+      renderAll(true); window.scrollTo(0, 0);
+    });
+  });
+  $('#m-settings').addEventListener('toggle', function () {});
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(renderTimeline, 120); });
+  $('#settings').addEventListener('toggle', function () { setTimeout(renderTimeline, 0); });
+  setInterval(placeNow, 60000);
+  window.addEventListener('beforeunload', function () { if (Object.keys(dirty).length) { clearTimeout(saveTimer); flush(); } });
+
+  /* ---------- money ---------- */
+  var MKEY = 'wl-money-v1', VIEW_KEY = 'wl-view-v1';
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var money = defaultMoney(), mDirty = false, mSaving = false, mTimer = null, mUndo = [];
+  ui.view = 'schedule'; try { if (localStorage.getItem(VIEW_KEY) === 'money') ui.view = 'money'; } catch (e) {}
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  ui.month = todayStr().slice(0, 7); ui.edit = null;
+
+  function defaultMoney() {
+    return { base: 'EGP', rates: {}, auto: {}, autoAt: 0, autoSrc: '', ecats: [
+      { id: 'food', name: 'Food', slot: 1, budget: 0 }, { id: 'transport', name: 'Transport', slot: 2, budget: 0 },
+      { id: 'housing', name: 'Housing', slot: 3, budget: 0 }, { id: 'bills', name: 'Bills', slot: 4, budget: 0 },
+      { id: 'health', name: 'Health', slot: 5, budget: 0 }, { id: 'study', name: 'Education', slot: 6, budget: 0 },
+      { id: 'fun', name: 'Fun', slot: 7, budget: 0 }, { id: 'other', name: 'Other', slot: 8, budget: 0 }
+    ], income: [], entries: [], recurring: [] };
+  }
+  function cur3(s) { s = String(s || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); return s.length === 3 ? s : null; }
+  function num(v, d) { v = Number(v); return isFinite(v) ? v : (d || 0); }
+  function normMoney(d) {
+    var m = defaultMoney(); d = d || {};
+    m.base = cur3(d.base) || 'EGP';
+    m.auto = {}; if (d.auto) Object.keys(d.auto).forEach(function (k) { var c = cur3(k), r = num(d.auto[k]); if (c && r > 0) m.auto[c] = r; });
+    m.autoAt = num(d.autoAt); m.autoSrc = String(d.autoSrc || '');
+    m.rates = {}; if (d.rates) Object.keys(d.rates).forEach(function (k) { var c = cur3(k), r = num(d.rates[k]); if (c && r > 0) m.rates[c] = r; });
+    if (Array.isArray(d.ecats) && d.ecats.length) {
+      m.ecats = d.ecats.filter(function (c) { return c && c.id; }).map(function (c) { return { id: String(c.id), name: String(c.name || 'Category'), slot: clamp(parseInt(c.slot, 10) || 1, 1, 8), budget: Math.max(num(c.budget), 0) }; });
+      if (!m.ecats.length) m.ecats = defaultMoney().ecats;
+    }
+    var first = m.ecats[0].id, has = function (id) { return m.ecats.some(function (c) { return c.id === id; }); };
+    m.income = (Array.isArray(d.income) ? d.income : []).filter(function (s) { return s && s.id; }).map(function (s) {
+      var h = {}; if (s.hours) Object.keys(s.hours).forEach(function (k) { if (/^\d{4}-\d{2}$/.test(k) && isFinite(s.hours[k]) && s.hours[k] !== null) h[k] = Number(s.hours[k]); });
+      return { id: String(s.id), name: String(s.name || 'Income'), type: s.type === 'hourly' ? 'hourly' : 'fixed', amount: Math.max(num(s.amount), 0), cur: cur3(s.cur) || m.base, cat: s.cat ? String(s.cat) : null, hours: h, from: /^\d{4}-\d{2}$/.test(s.from || '') ? s.from : ui.month };
+    });
+    m.entries = (Array.isArray(d.entries) ? d.entries : []).filter(function (e) { return e && e.id && /^\d{4}-\d{2}-\d{2}$/.test(e.date || ''); }).map(function (e) {
+      return { id: String(e.id), date: e.date, amt: Math.max(num(e.amt), 0), cur: cur3(e.cur) || m.base, cat: has(e.cat) ? e.cat : first, note: String(e.note || ''), rate: num(e.rate) > 0 ? num(e.rate) : 0 };
+    });
+    m.recurring = (Array.isArray(d.recurring) ? d.recurring : []).filter(function (r) { return r && r.id; }).map(function (r) {
+      return { id: String(r.id), name: String(r.name || 'Bill'), amt: Math.max(num(r.amt), 0), cur: cur3(r.cur) || m.base, cat: has(r.cat) ? r.cat : first, day: clamp(parseInt(r.day, 10) || 1, 1, 31), from: /^\d{4}-\d{2}$/.test(r.from || '') ? r.from : ui.month };
+    });
+    return m;
+  }
+  function mPush() { mUndo.push(JSON.stringify(money)); if (mUndo.length > 30) mUndo.shift(); renderBar(); }
+  function mDoUndo() {
+    if (!mUndo.length || ui.ro) return;
+    money = normMoney(JSON.parse(mUndo.pop())); ui.edit = null;
+    mChanged(); buildMoney(); renderBar();
+  }
+  function mChanged() {
+    if (ui.ro) return;
+    mDirty = true; setStatus('Saving…');
+    clearTimeout(mTimer); mTimer = setTimeout(mFlush, 600);
+  }
+  async function mFlush() {
+    if (mSaving) return;
+    mSaving = true; mDirty = false;
+    try {
+      if (mode === 'db' && db) await db.doc('money/main').set(JSON.parse(JSON.stringify(money)));
+      else localStorage.setItem(MKEY, JSON.stringify(money));
+      if (!mDirty) setStatus(savedLabel(), 'ok');
+    } catch (e) { mDirty = true; setStatus('Could not save. Your changes are still here; edit again to retry.', 'bad'); mSaving = false; return; }
+    mSaving = false;
+    if (mDirty) mFlush();
+  }
+  function loadMoneyLocal() {
+    try { var s = JSON.parse(localStorage.getItem(MKEY) || 'null'); if (s) money = normMoney(s); } catch (e) {}
+  }
+
+  function daysIn(m) { var a = m.split('-'); return new Date(+a[0], +a[1], 0).getDate(); }
+  function monthAdd(m, k) { var a = m.split('-'), d = new Date(+a[0], +a[1] - 1 + k, 1); return d.getFullYear() + '-' + pad2(d.getMonth() + 1); }
+  function monthLabel(m) { var a = m.split('-'); return MONTHS[+a[1] - 1] + ' ' + a[0]; }
+  function rateFor(c) { if (c === money.base) return 1; return money.rates[c] > 0 ? money.rates[c] : (money.auto[c] > 0 ? money.auto[c] : 0); }
+  function toBase(a, c) { var r = rateFor(c); return r > 0 ? a * r : null; }
+  function catHours(catId) { var p = P(); if (!p || !catId) return 0; return p.blocks.filter(function (b) { return b.c === catId; }).reduce(function (s, b) { return s + b.e - b.s; }, 0); }
+  function fm(n) { var a = Math.abs(n); return n.toLocaleString('en-US', { maximumFractionDigits: a >= 100 ? 0 : 2 }); }
+  function fmNet(n) { return (n >= 0 ? '+' : '−') + fm(Math.abs(n)); }
+  function ecat(id) { for (var i = 0; i < money.ecats.length; i++) if (money.ecats[i].id === id) return money.ecats[i]; return money.ecats[0]; }
+  function ecv(c) { return 'var(--c' + c.slot + ')'; }
+
+  function monthModel(m) {
+    var dim = daysIn(m), missing = {};
+    var M = { m: m, dim: dim, inc: [], incTotal: 0, items: [], byDay: [], byCat: {}, expTotal: 0, missing: missing };
+    for (var d = 0; d < dim; d++) M.byDay.push({ total: 0, cats: {} });
+    money.income.forEach(function (s) {
+      if (s.from > m) return;
+      var est = catHours(s.cat) * dim / 7, ov = s.hours ? s.hours[m] : undefined, isOv = typeof ov === 'number';
+      var hours = s.type === 'hourly' ? (isOv ? ov : est) : 0;
+      var amt = s.type === 'hourly' ? s.amount * hours : s.amount;
+      var b = toBase(amt, s.cur); if (b === null) { missing[s.cur] = true; b = 0; }
+      M.inc.push({ s: s, hours: hours, est: est, isOv: isOv, amt: amt, base: b });
+      M.incTotal += b;
+    });
+    function add(it) {
+      var b = (it.rate > 0 && it.cur !== money.base) ? it.amt * it.rate : toBase(it.amt, it.cur); if (b === null) { missing[it.cur] = true; b = 0; }
+      it.base = b; M.items.push(it);
+      var day = parseInt(it.date.slice(8, 10), 10) - 1;
+      if (day >= 0 && day < dim) { M.byDay[day].total += b; M.byDay[day].cats[it.cat] = (M.byDay[day].cats[it.cat] || 0) + b; }
+      M.byCat[it.cat] = (M.byCat[it.cat] || 0) + b; M.expTotal += b;
+    }
+    money.entries.forEach(function (e) { if (e.date.slice(0, 7) === m) add({ id: e.id, date: e.date, amt: e.amt, cur: e.cur, cat: e.cat, note: e.note, rate: e.rate, rec: false }); });
+    money.recurring.forEach(function (r) { if (r.from <= m) add({ id: r.id, date: m + '-' + pad2(Math.min(r.day, dim)), amt: r.amt, cur: r.cur, cat: r.cat, note: r.name, rec: true }); });
+    M.net = M.incTotal - M.expTotal;
+    return M;
+  }
+  function niceMax(v) { if (v <= 0) return 100; var e = Math.pow(10, Math.floor(Math.log(v) / Math.LN10)), f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * e; }
+
+  /* ----- outputs ----- */
+  function renderMoney() {
+    if (ui.view !== 'money') return;
+    var M = monthModel(ui.month), B0 = money.base;
+    $('#m-title').textContent = monthLabel(ui.month);
+    $('#m-base').textContent = 'All totals in ' + B0;
+    var miss = Object.keys(M.missing);
+    var warn = $('#m-warn'); warn.hidden = !miss.length;
+    if (miss.length) warn.textContent = 'No exchange rate yet for ' + miss.join(', ') + '. Rates load by themselves when this device is online, or you can type one under Money settings. ' + (miss.length > 1 ? 'Amounts in those currencies are' : 'Amounts in that currency are') + ' left out of the totals until you do.';
+
+    var isNow = ui.month === todayStr().slice(0, 7), today = parseInt(todayStr().slice(8, 10), 10);
+    var elapsed = isNow ? today : M.dim, avg = M.expTotal / Math.max(elapsed, 1), pace = avg * M.dim;
+    var rate = M.incTotal > 0 ? M.net / M.incTotal : null;
+    var tiles = [
+      ['Income', fm(M.incTotal) + '<small>' + B0 + '</small>', M.inc.length + (M.inc.length === 1 ? ' source' : ' sources')],
+      ['Expenses', fm(M.expTotal) + '<small>' + B0 + '</small>', M.items.length + (M.items.length === 1 ? ' entry' : ' entries')],
+      ['Net', '<span style="color:' + (M.net >= 0 ? 'var(--ok)' : 'var(--crit)') + '">' + (M.net >= 0 ? '▲ ' : '▼ ') + fm(Math.abs(M.net)) + '</span><small>' + B0 + '</small>', rate === null ? 'add income to see savings rate' : (M.net >= 0 ? pct(rate) + ' of income kept' : 'spending exceeds income')],
+      ['Per day', fm(avg) + '<small>' + B0 + '</small>', isNow ? 'on pace for ' + fm(pace) + ' by month end' : 'average over ' + M.dim + ' days']
+    ];
+    $('#m-kpis').innerHTML = tiles.map(function (t) { return '<div class="kpi"><span class="eyebrow">' + t[0] + '</span><span class="big">' + t[1] + '</span><span class="cap">' + t[2] + '</span></div>'; }).join('');
+
+    /* insights */
+    var ins = [];
+    var tc = Object.keys(M.byCat).sort(function (a, b) { return M.byCat[b] - M.byCat[a]; });
+    if (tc.length && M.expTotal > 0) ins.push(['', '<b>' + esc(ecat(tc[0]).name) + '</b> is the biggest expense: ' + fm(M.byCat[tc[0]]) + ' ' + B0 + ' (' + pct(M.byCat[tc[0]] / M.expTotal) + ').']);
+    var hi = -1; M.byDay.forEach(function (d, i) { if (d.total > 0 && (hi < 0 || d.total > M.byDay[hi].total)) hi = i; });
+    if (hi >= 0) ins.push(['', '<b>' + MONTHS[+ui.month.slice(5) - 1].slice(0, 3) + ' ' + (hi + 1) + '</b> was the costliest day: ' + fm(M.byDay[hi].total) + ' ' + B0 + '.']);
+    money.ecats.forEach(function (c) { var v = M.byCat[c.id] || 0; if (c.budget > 0 && v > c.budget) ins.push(['warn', '<b>' + esc(c.name) + '</b> is over budget by ' + fm(v - c.budget) + ' ' + B0 + '.']); });
+    if (!M.items.length) ins.push(['', 'Log your first expense above. Add your jobs under Income to see your net.']);
+    $('#m-insights').innerHTML = ins.slice(0, 5).map(function (t) { return '<li class="' + t[0] + '">' + t[1] + '</li>'; }).join('');
+
+    /* legend */
+    $('#m-legend').innerHTML = money.ecats.map(function (c) { return '<span data-cat="' + esc(c.id) + '"><i class="kd" style="background:' + ecv(c) + '"></i>' + esc(c.name) + '</span>'; }).join('');
+
+    /* daily chart */
+    var maxDay = Math.max.apply(null, M.byDay.map(function (d) { return d.total; })), top = niceMax(Math.max(maxDay, avg * 1.2)), H = 170;
+    var grid = [top, top / 2, 0].map(function (v, i) { return '<i style="top:' + (i * H / 2) + 'px"></i><span style="top:' + (i * H / 2) + 'px">' + fm(v) + '</span>'; }).join('');
+    var cols = M.byDay.map(function (d, i) {
+      var segs = money.ecats.map(function (c) { var v = d.cats[c.id] || 0; return v > 0 ? '<div data-cat="' + esc(c.id) + '" style="height:' + Math.max(v / top * H, 2) + 'px;background:' + ecv(c) + '"></div>' : ''; }).join('');
+      var lines = money.ecats.filter(function (c) { return d.cats[c.id]; }).map(function (c) { return esc(c.name) + ': ' + fm(d.cats[c.id]); }).join('<br>');
+      var tipT = '<b>' + MONTHS[+ui.month.slice(5) - 1].slice(0, 3) + ' ' + (i + 1) + '</b> · ' + (d.total ? fm(d.total) + ' ' + B0 + '<br>' + lines : 'no spending');
+      return '<div class="dcol" data-tip="' + esc(tipT) + '"><div class="dbar">' + segs + '</div></div>';
+    }).join('');
+    var lab = M.byDay.map(function (_, i) { var n = i + 1; return '<span class="' + (isNow && n === today ? 'today' : '') + '">' + (n === 1 || n % 5 === 0 ? n : '') + '</span>'; }).join('');
+    $('#m-daily').innerHTML = '<div class="dwrap"><div class="dgrid">' + grid + '</div>' + (avg > 0 ? '<div class="davg" style="top:' + (H - avg / top * H) + 'px"><span>average ' + fm(avg) + '</span></div>' : '') + '<div class="dcols">' + cols + '</div></div><div class="dlabels">' + lab + '</div>';
+
+    /* categories */
+    var maxC = Math.max.apply(null, [1].concat(money.ecats.map(function (c) { return Math.max(M.byCat[c.id] || 0, c.budget || 0); })));
+    var quiet = money.ecats.filter(function (c) { return !(M.byCat[c.id] > 0) && !(c.budget > 0); });
+    var quietNote = quiet.length ? '<p class="note" style="margin-top:12px">No spending in ' + quiet.map(function (c) { return esc(c.name); }).join(', ') + '.</p>' : '';
+    $('#m-cats').innerHTML = money.ecats.filter(function (c) { return (M.byCat[c.id] > 0) || (c.budget > 0); }).sort(function (a, b) { return (M.byCat[b.id] || 0) - (M.byCat[a.id] || 0); }).map(function (c) {
+      var v = M.byCat[c.id] || 0, meta = '';
+      if (c.budget > 0) meta = v > c.budget ? '<span class="pill crit">▲ Over by ' + fm(v - c.budget) + '</span>' : '<span class="pill ' + (v / c.budget >= 0.9 ? 'warn' : 'ok') + '">' + (v / c.budget >= 0.9 ? '● ' : '✓ ') + fm(c.budget - v) + ' left of ' + fm(c.budget) + '</span>';
+      return '<div class="crow2" data-cat="' + esc(c.id) + '"><i class="sw" style="background:' + ecv(c) + ';margin-top:4px"></i><div class="top"><span class="nm">' + esc(c.name) + '</span><span class="num">' + fm(v) + ' <span style="color:var(--ink-3)">' + (M.expTotal ? pct(v / M.expTotal) : '0%') + '</span></span></div><div class="barwrap"><i style="width:' + (v / maxC * 100) + '%;background:' + ecv(c) + '"></i>' + (c.budget > 0 ? '<span class="bud" style="left:' + (c.budget / maxC * 100) + '%" data-tip="Budget: ' + fm(c.budget) + ' ' + B0 + '"></span>' : '') + '</div>' + (meta ? '<div class="meta2">' + meta + '</div>' : '') + '</div>';
+    }).join('') + quietNote;
+
+    /* trend */
+    var months = [], i2; for (i2 = 5; i2 >= 0; i2--) months.push(monthAdd(ui.month, -i2));
+    var models = months.map(function (m) { return m === ui.month ? M : monthModel(m); });
+    var mx = Math.max.apply(null, [1].concat(models.map(function (x) { return Math.max(x.incTotal, x.expTotal); })));
+    $('#m-trend').innerHTML = models.map(function (x) {
+      var tt = '<b>' + monthLabel(x.m) + '</b><br>Income ' + fm(x.incTotal) + '<br>Expenses ' + fm(x.expTotal) + '<br>Net ' + fmNet(x.net) + ' ' + B0;
+      return '<div class="tg' + (x.m === ui.month ? ' cur' : '') + '" data-m="' + x.m + '" data-tip="' + esc(tt) + '"><div class="tbars"><i class="tb inc" style="height:' + (x.incTotal / mx * 130) + 'px"></i><i class="tb exp" style="height:' + (x.expTotal / mx * 130) + 'px"></i></div><span class="tm">' + MONTHS[+x.m.slice(5) - 1].slice(0, 3) + '</span>' + (x.incTotal || x.expTotal ? '<span class="tn ' + (x.net >= 0 ? 'pos' : 'neg') + '">' + (x.net >= 0 ? '▲ ' : '▼ ') + fm(Math.abs(x.net)) + '</span>' : '<span class="tn" style="color:var(--ink-3)">–</span>') + '</div>';
+    }).join('');
+
+    /* income results (editor rows are built separately) */
+    money.income.forEach(function (s0) {
+      if (s0.from > ui.month) { var r0 = $('#res-' + s0.id); if (r0) { r0.textContent = 'starts ' + monthLabel(s0.from); $('#resb-' + s0.id).textContent = ''; } }
+    });
+    M.inc.forEach(function (r) {
+      var res = $('#res-' + r.s.id), sub = $('#resb-' + r.s.id); if (!res) return;
+      res.textContent = (r.s.type === 'hourly' ? fm(r.hours) + 'h × ' + fm(r.s.amount) + ' = ' : '') + fm(r.amt) + ' ' + r.s.cur;
+      sub.textContent = r.s.cur === B0 ? '' : (rateFor(r.s.cur) > 0 ? '≈ ' + fm(r.base) + ' ' + B0 : 'no exchange rate yet');
+      var hint = $('#hint-' + r.s.id); if (hint) hint.textContent = (r.s.cat ? 'Schedule says ' + fm(catHours(r.s.cat)) + 'h a week, about ' + fm(r.est) + 'h in ' + MONTHS[+ui.month.slice(5) - 1] + '.' : 'No schedule category linked, so enter the hours for this month by hand.');
+    });
+
+    /* log */
+    var items = M.items.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+    $('#m-logcount').textContent = items.length + (items.length === 1 ? ' entry' : ' entries');
+    $('#m-log').innerHTML = items.length ? items.map(function (it) {
+      var c = ecat(it.cat), dt = new Date(it.date + 'T00:00:00');
+      var amt = fm(it.amt) + ' ' + it.cur + (it.cur !== B0 ? '<br><small style="color:var(--ink-3)">' + (it.base ? '≈ ' + fm(it.base) + ' ' + B0 : 'no rate yet') + '</small>' : '');
+      return '<div class="lg" data-cat="' + esc(it.cat) + '"><span class="dt">' + JS[dt.getDay()] + ' ' + dt.getDate() + '</span><i class="sw" style="background:' + ecv(c) + '"></i><div class="nt">' + esc(c.name) + (it.rec ? '<span class="tag">monthly</span>' : '') + (it.note ? '<small>' + esc(it.note) + '</small>' : '') + '</div><div class="am">' + amt + '</div><div class="ac">' + (it.rec ? '' : '<button type="button" class="btn" data-edit="' + it.id + '">Edit</button><button type="button" class="btn" data-rm="' + it.id + '">Delete</button>') + '</div></div>';
+    }).join('') : '<p class="none" style="color:var(--ink-3);margin:0">Nothing logged in ' + monthLabel(ui.month) + ' yet.</p>';
+  }
+
+  /* ----- editors ----- */
+  function usedCurrencies() {
+    var s = {}; money.income.forEach(function (x) { s[x.cur] = 1; }); money.entries.forEach(function (x) { s[x.cur] = 1; }); money.recurring.forEach(function (x) { s[x.cur] = 1; });
+    return Object.keys(s).filter(function (c) { return c !== money.base; }).sort();
+  }
+  function catOptions(sel) { return money.ecats.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join(''); }
+  function buildMoney() {
+    buildForm(); buildIncome(); buildMoneySettings(); renderMoney();
+  }
+  function buildForm() {
+    var keepCat = $('#x-cat').value;
+    $('#x-cat').innerHTML = catOptions(ui.edit ? (money.entries.filter(function (e) { return e.id === ui.edit; })[0] || {}).cat : (keepCat || money.ecats[0].id));
+    var e = ui.edit ? money.entries.filter(function (x) { return x.id === ui.edit; })[0] : null;
+    if (e) { $('#x-date').value = e.date; $('#x-amt').value = e.amt; $('#x-cur').value = e.cur; $('#x-note').value = e.note; }
+    else { if (!$('#x-date').value) $('#x-date').value = todayStr(); if (!$('#x-cur').value || !cur3($('#x-cur').value)) $('#x-cur').value = money.base; }
+    $('#m-form-h').textContent = e ? 'Edit expense' : 'Log an expense';
+    $('#x-save').textContent = e ? 'Save changes' : 'Add expense';
+    $('#x-cancel').hidden = !e;
+  }
+  function buildIncome() {
+    var p = P(), host = $('#m-income'), ro = ui.ro ? ' disabled' : '';
+    if (!money.income.length) { host.innerHTML = '<p class="none" style="color:var(--ink-3);margin:0">No income sources yet. Add each job once: a fixed monthly salary, or an hourly rate that multiplies the hours in your schedule.</p>'; return; }
+    host.innerHTML = money.income.map(function (s) {
+      var catOpts = '<option value="">Enter hours by hand</option>' + (p ? p.cats.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === s.cat ? ' selected' : '') + '>Schedule: ' + esc(c.name) + '</option>'; }).join('') : '');
+      var ov = s.hours[ui.month];
+      return '<div class="src" data-id="' + s.id + '">' +
+        '<div class="fld"><label>Name</label><input type="text" class="in" data-f="name" maxlength="40" value="' + esc(s.name) + '"' + ro + '></div>' +
+        '<div class="fld"><label>Paid</label><select class="in" data-f="type"' + ro + '><option value="fixed"' + (s.type === 'fixed' ? ' selected' : '') + '>Fixed monthly salary</option><option value="hourly"' + (s.type === 'hourly' ? ' selected' : '') + '>Per hour worked</option></select></div>' +
+        '<div class="fld"><label>' + (s.type === 'hourly' ? 'Rate per hour' : 'Amount per month') + '</label><input type="number" class="in" data-f="amount" min="0" step="any" inputmode="decimal" value="' + s.amount + '"' + ro + '></div>' +
+        '<div class="fld"><label>Currency</label><input type="text" class="in" data-f="cur" list="curs" maxlength="3" style="text-transform:uppercase" value="' + esc(s.cur) + '"' + ro + '></div>' +
+        '<div class="fld"><label>Counts from</label><input type="month" class="in" data-f="from" value="' + esc(s.from) + '"' + ro + '></div>' +
+        (s.type === 'hourly' ? '<div class="fld"><label>Hours come from</label><select class="in" data-f="cat"' + ro + '>' + catOpts + '</select></div>' +
+          '<div class="fld"><label>Hours in ' + MONTHS[+ui.month.slice(5) - 1] + '</label><input type="number" class="in" data-f="hours" min="0" step="any" inputmode="decimal" placeholder="use schedule" value="' + (typeof ov === 'number' ? ov : '') + '"' + ro + '></div>' : '') +
+        '<div class="res"><span class="eyebrow">' + MONTHS[+ui.month.slice(5) - 1] + '</span><b id="res-' + s.id + '"></b><small id="resb-' + s.id + '"></small></div>' +
+        '<button type="button" class="btn rm" data-rmsrc="' + s.id + '"' + ro + '>Remove</button>' +
+        (s.type === 'hourly' ? '<p class="srcnote" id="hint-' + s.id + '"></p>' : '') + '</div>';
+    }).join('');
+  }
+  function buildMoneySettings() {
+    var ro = ui.ro ? ' disabled' : '', used = {};
+    money.entries.forEach(function (e) { used[e.cat] = 1; }); money.recurring.forEach(function (r) { used[r.cat] = 1; });
+    var rates = usedCurrencies().map(function (c) {
+      var man = money.rates[c] > 0, au = money.auto[c] > 0 ? money.auto[c] : 0;
+      return '<div class="fld"><label for="rt-' + c + '">1 ' + c + ' equals</label><div class="row"><input type="number" class="in" id="rt-' + c + '" data-rate="' + c + '" min="0" step="any" inputmode="decimal" value="' + (man ? money.rates[c] : '') + '" placeholder="' + (au ? fm(au) + ' (auto)' : 'rate') + '"' + ro + '><span class="val">' + money.base + '</span>' + (man && au ? '<button type="button" class="btn" data-clearrate="' + c + '"' + ro + '>Use auto</button>' : '') + '</div><small class="note" style="margin:0">' + (man ? 'Your own rate is used.' : au ? 'Automatic rate.' : 'No rate yet.') + '</small></div>';
+    }).join('');
+    var rstat = ratesStatusText();
+    var h = '<div class="sgrid"><div class="fld"><label for="mb-cur">Main currency</label><input type="text" class="in" id="mb-cur" list="curs" maxlength="3" style="text-transform:uppercase" value="' + esc(money.base) + '"' + ro + '></div>' + rates + '</div>' +
+      '<div class="erow" style="margin-top:12px"><button type="button" class="btn" id="rates-refresh">Refresh rates</button><span class="note" id="rates-status" style="margin:0">' + esc(rstat) + '</span></div>' +
+      '<p class="note">Rates load automatically when this device is online, at most twice a day, and the last ones are kept for offline use. Type your own rate to override one. Expenses keep the rate from the day you logged them. Rates by <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener" style="color:inherit">exchangerate-api.com</a>, with the jsDelivr currency-api as a backup.</p>' +
+      '<div class="msec"><h3 class="eyebrow" style="font-family:var(--font-body)">Expense categories and monthly budgets (' + esc(money.base) + ', 0 means no budget)</h3>' +
+      money.ecats.map(function (c) {
+        return '<div class="xrow" data-cid="' + esc(c.id) + '"><div class="fld"><label>Name</label><input type="text" class="in" data-cf="name" maxlength="24" value="' + esc(c.name) + '"' + ro + '></div><div class="fld"><label>Budget per month</label><input type="number" class="in" data-cf="budget" min="0" step="any" inputmode="decimal" value="' + c.budget + '"' + ro + '></div><button type="button" class="btn" data-rmcat="' + esc(c.id) + '"' + (ui.ro || used[c.id] || money.ecats.length < 2 ? ' disabled title="' + (used[c.id] ? 'Used by an expense' : 'Keep at least one') + '"' : '') + '>Remove</button></div>';
+      }).join('') +
+      '<div class="erow"><button type="button" class="btn" id="cat-addx"' + (ui.ro || money.ecats.length >= 8 ? ' disabled' : '') + '>Add category</button></div></div>' +
+      '<div class="msec"><h3 class="eyebrow" style="font-family:var(--font-body)">Recurring monthly bills</h3>' +
+      (money.recurring.length ? money.recurring.map(function (r) {
+        return '<div class="rrow" data-rid="' + r.id + '"><div class="fld"><label>Name</label><input type="text" class="in" data-rf="name" maxlength="40" value="' + esc(r.name) + '"' + ro + '></div><div class="fld"><label>Amount</label><input type="number" class="in" data-rf="amt" min="0" step="any" inputmode="decimal" value="' + r.amt + '"' + ro + '></div><div class="fld"><label>Currency</label><input type="text" class="in" data-rf="cur" list="curs" maxlength="3" style="text-transform:uppercase" value="' + esc(r.cur) + '"' + ro + '></div><div class="fld"><label>Category</label><select class="in" data-rf="cat"' + ro + '>' + catOptions(r.cat) + '</select></div><div class="fld"><label>Day of month</label><input type="number" class="in" data-rf="day" min="1" max="31" value="' + r.day + '"' + ro + '></div><button type="button" class="btn" data-rmrec="' + r.id + '"' + ro + '>Remove</button></div>';
+      }).join('') : '<p class="note" style="margin-top:0">Rent, subscriptions and other fixed bills. They are counted every month from the month you add them, with no logging needed.</p>') +
+      '<div class="erow"><button type="button" class="btn" id="rec-add"' + ro + '>Add recurring bill</button></div></div>';
+    $('#m-settings-body').innerHTML = h;
+  }
+
+  /* ----- live exchange rates ----- */
+  var rateBusy = false, rateTry = 0;
+  function ratesStatusText() {
+    if (!money.autoAt) return navigator.onLine === false ? 'Offline. Rates will load when you are back online.' : 'Rates not loaded yet.';
+    var d = new Date(money.autoAt);
+    return 'Updated ' + d.getDate() + ' ' + MONTHS[d.getMonth()].slice(0, 3) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + (money.autoSrc ? ' from ' + money.autoSrc : '') + '.';
+  }
+  async function fetchJSON(url) {
+    var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 10000);
+    try { var r = await fetch(url, { signal: ctl.signal, cache: 'no-store' }); if (!r.ok) throw new Error('http ' + r.status); return await r.json(); }
+    finally { clearTimeout(t); }
+  }
+  async function fetchRates(manual) {
+    if (rateBusy) return; rateBusy = true; rateTry = Date.now();
+    var st = $('#rates-status'); if (manual && st) st.textContent = 'Fetching…';
+    var base = money.base, auto = null, src = '';
+    try {
+      var j = await fetchJSON('https://open.er-api.com/v6/latest/' + base);
+      if (j && j.result === 'success' && j.rates) { auto = {}; Object.keys(j.rates).forEach(function (k) { var c = cur3(k), v = Number(j.rates[k]); if (c && v > 0) auto[c] = 1 / v; }); src = 'exchangerate-api.com'; }
+    } catch (e) { auto = null; }
+    if (!auto) {
+      try {
+        var j2 = await fetchJSON('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/' + base.toLowerCase() + '.json');
+        var tbl = j2 && j2[base.toLowerCase()];
+        if (tbl) { auto = {}; Object.keys(tbl).forEach(function (k) { if (k.length !== 3) return; var c = cur3(k), v = Number(tbl[k]); if (c && v > 0) auto[c] = 1 / v; }); src = 'jsDelivr currency-api'; }
+      } catch (e) { auto = null; }
+    }
+    rateBusy = false;
+    if (!auto || base !== money.base) { if (manual) { var s2 = $('#rates-status'); if (s2) s2.textContent = 'Could not reach a rate service. The last saved rates are still in use.'; } return; }
+    auto[base] = 1; money.auto = auto; money.autoAt = Date.now(); money.autoSrc = src;
+    mChanged();
+    var ae = document.activeElement;
+    if (ui.view === 'money') { if (ae && ae.closest && ae.closest('#m-settings') && ae.tagName === 'INPUT') { renderMoney(); var s3 = $('#rates-status'); if (s3) s3.textContent = ratesStatusText(); } else buildMoney(); }
+  }
+  function maybeRefreshRates() {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    if (Date.now() - rateTry < 5 * 60 * 1000) return;
+    var stale = !money.autoAt || Date.now() - money.autoAt > 12 * 3600 * 1000;
+    var missing = usedCurrencies().some(function (c) { return !(money.auto[c] > 0) && !(money.rates[c] > 0); });
+    if (stale || missing) fetchRates(false);
+  }
+  window.addEventListener('online', maybeRefreshRates);
+
+  /* ----- events ----- */
+  var mroot = $('#money');
+  function srcOf(el) { var row = el.closest('.src'); if (!row) return null; for (var i = 0; i < money.income.length; i++) if (money.income[i].id === row.dataset.id) return money.income[i]; return null; }
+  mroot.addEventListener('focusin', function (e) { var t = e.target; if (t.matches && t.matches('input, select') && !t.dataset.pushed && !ui.ro && (t.closest('.src') || t.closest('#m-settings'))) { mPush(); t.dataset.pushed = '1'; } });
+  mroot.addEventListener('focusout', function (e) { if (e.target.dataset) delete e.target.dataset.pushed; });
+  mroot.addEventListener('input', function (e) {
+    var t = e.target, s = srcOf(t);
+    if (s && t.dataset.f) {
+      var f = t.dataset.f;
+      if (f === 'name') s.name = t.value || 'Income';
+      else if (f === 'amount') s.amount = Math.max(num(t.value), 0);
+      else if (f === 'from') { if (/^\d{4}-\d{2}$/.test(t.value)) s.from = t.value; else return; }
+      else if (f === 'hours') { if (t.value === '') delete s.hours[ui.month]; else s.hours[ui.month] = Math.max(num(t.value), 0); }
+      else return;
+      mChanged(); renderMoney(); return;
+    }
+    var xr = t.closest && t.closest('[data-cid]');
+    if (xr && t.dataset.cf) { var c = ecat(xr.dataset.cid); if (t.dataset.cf === 'name') c.name = t.value || 'Category'; else c.budget = Math.max(num(t.value), 0); mChanged(); renderMoney(); return; }
+    var rr = t.closest && t.closest('[data-rid]');
+    if (rr && t.dataset.rf) {
+      var r = money.recurring.filter(function (x) { return x.id === rr.dataset.rid; })[0]; if (!r) return;
+      var f2 = t.dataset.rf;
+      if (f2 === 'name') r.name = t.value || 'Bill'; else if (f2 === 'amt') r.amt = Math.max(num(t.value), 0); else if (f2 === 'day') r.day = clamp(parseInt(t.value, 10) || 1, 1, 31); else return;
+      mChanged(); renderMoney(); return;
+    }
+    if (t.dataset.rate) { var v = num(t.value); if (v > 0) money.rates[t.dataset.rate] = v; else delete money.rates[t.dataset.rate]; mChanged(); renderMoney(); }
+  });
+  mroot.addEventListener('change', function (e) {
+    var t = e.target, s = srcOf(t);
+    if (s && t.dataset.f) {
+      var f = t.dataset.f;
+      if (f === 'type') { s.type = t.value === 'hourly' ? 'hourly' : 'fixed'; mChanged(); buildIncome(); renderMoney(); }
+      else if (f === 'cat') { s.cat = t.value || null; mChanged(); renderMoney(); }
+      else if (f === 'cur') { var c = cur3(t.value); if (c) { s.cur = c; mChanged(); buildMoney(); } else t.value = s.cur; }
+      return;
+    }
+    var rr = t.closest && t.closest('[data-rid]');
+    if (rr && t.dataset.rf) {
+      var r = money.recurring.filter(function (x) { return x.id === rr.dataset.rid; })[0]; if (!r) return;
+      if (t.dataset.rf === 'cat') { r.cat = t.value; mChanged(); renderMoney(); }
+      else if (t.dataset.rf === 'cur') { var c2 = cur3(t.value); if (c2) { r.cur = c2; mChanged(); buildMoney(); } else t.value = r.cur; }
+      return;
+    }
+    if (t.dataset.rate) { buildMoneySettings(); renderMoney(); return; }
+    if (t.id === 'mb-cur') { var b = cur3(t.value); if (b && b !== money.base) { mPush(); money.base = b; money.rates = {}; money.auto = {}; money.autoAt = 0; money.entries.forEach(function (x) { x.rate = 0; }); mChanged(); buildMoney(); fetchRates(false); } else if (!b) t.value = money.base; }
+  });
+  mroot.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('button, .tg') : null; if (!t || ui.ro && t.tagName === 'BUTTON' && !t.id.match(/^m-/)) return;
+    if (t.classList.contains('tg')) { ui.month = t.dataset.m; ui.edit = null; buildMoney(); return; }
+    if (t.dataset.rmsrc) { confirmTwice(t, function () { mPush(); money.income = money.income.filter(function (x) { return x.id !== t.dataset.rmsrc; }); mChanged(); buildMoney(); setStatus('Income source removed. Undo is at the top.'); }); }
+    else if (t.dataset.rm) { confirmTwice(t, function () { mPush(); money.entries = money.entries.filter(function (x) { return x.id !== t.dataset.rm; }); if (ui.edit === t.dataset.rm) ui.edit = null; mChanged(); buildMoney(); setStatus('Deleted. Undo is at the top.'); }); }
+    else if (t.dataset.edit) { ui.edit = t.dataset.edit; buildForm(); $('#m-form').scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    else if (t.dataset.rmcat) { confirmTwice(t, function () { mPush(); money.ecats = money.ecats.filter(function (x) { return x.id !== t.dataset.rmcat; }); mChanged(); buildMoney(); }); }
+    else if (t.dataset.rmrec) { confirmTwice(t, function () { mPush(); money.recurring = money.recurring.filter(function (x) { return x.id !== t.dataset.rmrec; }); mChanged(); buildMoney(); }); }
+    else if (t.id === 'inc-add') { mPush(); money.income.push({ id: uid(), name: 'New source', type: 'fixed', amount: 0, cur: money.base, cat: null, hours: {}, from: ui.month }); mChanged(); buildMoney(); }
+    else if (t.id === 'cat-addx') { mPush(); var taken = {}; money.ecats.forEach(function (c) { taken[c.slot] = 1; }); var sl = 1; while (taken[sl] && sl < 8) sl++; money.ecats.push({ id: 'c' + uid(), name: 'New category', slot: sl, budget: 0 }); mChanged(); buildMoney(); }
+    else if (t.id === 'rec-add') { mPush(); money.recurring.push({ id: uid(), name: 'Rent', amt: 0, cur: money.base, cat: money.ecats[0].id, day: 1, from: ui.month }); mChanged(); buildMoney(); }
+    else if (t.dataset.clearrate) { mPush(); delete money.rates[t.dataset.clearrate]; mChanged(); buildMoney(); }
+    else if (t.id === 'rates-refresh') { fetchRates(true); }
+    else if (t.id === 'm-prev') { ui.month = monthAdd(ui.month, -1); ui.edit = null; buildMoney(); }
+    else if (t.id === 'm-next') { ui.month = monthAdd(ui.month, 1); ui.edit = null; buildMoney(); }
+    else if (t.id === 'm-now') { ui.month = todayStr().slice(0, 7); ui.edit = null; buildMoney(); }
+    else if (t.id === 'x-cancel') { ui.edit = null; $('#x-amt').value = ''; $('#x-note').value = ''; buildForm(); }
+  });
+  $('#m-form').addEventListener('submit', function (e) {
+    e.preventDefault(); if (ui.ro) return;
+    var amt = num($('#x-amt').value, -1), c = cur3($('#x-cur').value) || money.base, d = $('#x-date').value;
+    if (!(amt >= 0) || $('#x-amt').value === '' || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    mPush();
+    var prev = ui.edit ? money.entries.filter(function (x) { return x.id === ui.edit; })[0] : null;
+    var rate = c === money.base ? 0 : ((prev && prev.cur === c && prev.rate > 0) ? prev.rate : rateFor(c));
+    var rec = { id: ui.edit || uid(), date: d, amt: amt, cur: c, cat: $('#x-cat').value, note: $('#x-note').value.trim(), rate: rate };
+    if (ui.edit) { money.entries = money.entries.map(function (x) { return x.id === ui.edit ? rec : x; }); ui.edit = null; }
+    else money.entries.push(rec);
+    if (d.slice(0, 7) !== ui.month) ui.month = d.slice(0, 7);
+    mChanged(); $('#x-amt').value = ''; $('#x-note').value = ''; buildMoney();
+    setStatus('Saved ' + fm(rec.amt) + ' ' + rec.cur + ' to ' + ecat(rec.cat).name + '.', 'ok'); $('#x-amt').focus();
+  });
+  function updateConv() {
+    var el = $('#x-conv'); if (!el) return;
+    var a = num($('#x-amt').value, 0), c = cur3($('#x-cur').value) || money.base, r = rateFor(c);
+    el.textContent = !a ? '–' : (c === money.base ? fm(a) + ' ' + c : (r > 0 ? '≈ ' + fm(a * r) + ' ' + money.base : 'no rate yet'));
+  }
+  $('#x-amt').addEventListener('input', updateConv); $('#x-cur').addEventListener('input', updateConv);
+  function exportMoneyCSV() {
+    var M = monthModel(ui.month);
+    var rows = [['Date', 'Category', 'Note', 'Amount', 'Currency', 'Amount in ' + money.base, 'Recurring']];
+    M.items.sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (it) { rows.push([it.date, ecat(it.cat).name, it.note, it.amt, it.cur, Math.round(it.base * 100) / 100, it.rec ? 'yes' : '']); });
+    return rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+  }
+
+  /* ---------- boot ---------- */
+  async function boot() {
+    var cl = window.claude, user = null;
+    try { db = cl && cl.use ? await cl.use('db') : null; } catch (e) { db = null; }
+    try { user = cl && cl.use ? await cl.use('user') : null; } catch (e) { user = null; }
+    try { dl = cl && cl.use ? await cl.use('downloads') : null; } catch (e) { dl = null; }
+    if (dl || !window.claude) $('#b-csv').hidden = false;
+    try { if (user && user.can) { var cw = await user.can('data.write'); if (cw === false) ui.ro = true; } } catch (e) {}
+
+    if (db) {
+      mode = 'db';
+      var first = true;
+      db.doc('money/main').onSnapshot(function (snap) {
+        if (mDirty || mSaving || snap.metadata.hasPendingWrites || !snap.exists) return;
+        var nm = normMoney(snap.data()); if (JSON.stringify(nm) === JSON.stringify(money)) return;
+        money = nm; setTimeout(maybeRefreshRates, 300);
+        if (ui.view === 'money') { var ae = document.activeElement; if (ae && ae.closest && ae.closest('#money')) renderMoney(); else buildMoney(); }
+      }, function () {});
+      db.collection('plans').onSnapshot(function (snap) {
+        snap.docChanges().forEach(function (ch) {
+          var id = ch.doc.id;
+          if (ch.type === 'removed') { if (!dirty[id]) delete plans[id]; return; }
+          if (dirty[id] || (dragging && id === activeId) || ch.doc.metadata.hasPendingWrites) return;
+          var data = ch.doc.data(); if (!data) return;
+          var had = plans[id] && JSON.stringify(plain(plans[id]));
+          var np = normalize(data);
+          if (had === JSON.stringify(np)) return;
+          plans[id] = np;
+        });
+        if (first) { first = false; setStatus(ui.ro ? 'Read-only' : savedLabel(), ui.ro ? '' : 'ok'); }
+        if (ui.sel && P() && !findBlock(P(), ui.sel)) ui.sel = null;
+        if (!dragging) renderAll(document.activeElement && /^(p-|cn-|cw-|e-)/.test(document.activeElement.id || '') ? false : true);
+      }, function () {
+        mode = 'local'; loadLocal(); loadMoneyLocal(); $('#banner').hidden = false;
+        $('#banner').textContent = 'Your saved plans could not be reached, so changes stay on this device.';
+        renderAll(true);
+      });
+      renderAll(true);
+    } else {
+      mode = 'local'; loadLocal(); loadMoneyLocal(); setTimeout(maybeRefreshRates, 300);
+      $('#banner').hidden = false;
+      $('#banner').textContent = PUBLIC ? 'Your plans and money data are saved on this device only. Use Backup to keep a copy or to move to another device.' : 'Plans are saved in this browser on this computer. Copy the file to keep a backup.';
+      setStatus(savedLabel(), 'ok');
+      renderAll(true);
+    }
+    if (ui.ro) { $('#banner').hidden = false; $('#banner').textContent = 'You can view this planner but not change it.'; }
+  }
+  function loadLocal() {
+    try { var s = JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null'); if (s) Object.keys(s).forEach(function (k) { plans[k] = normalize(s[k]); }); } catch (e) {}
+  }
+  /* ---------- first-run setup, templates, backup ---------- */
+  function R(days, st, en, c, t) { return days.map(function (d) { return { id: 't' + d + c + st, d: d, s: st, e: en, c: c, t: t }; }); }
+  var TEMPLATES = {
+    blank: { label: 'Blank', note: 'Start empty and add your own blocks.',
+      cats: [{ id: 'c1', name: 'Work', w: 1, slot: 1 }, { id: 'c2', name: 'Study', w: 1.25, slot: 2 }, { id: 'c3', name: 'Training', w: 1, slot: 3 }], blocks: [] },
+    student: { label: 'Student', note: 'Classes, study time, training and a part-time job.',
+      cats: [{ id: 'cls', name: 'Classes', w: 1.25, slot: 1 }, { id: 'stu', name: 'Study', w: 1.25, slot: 2 }, { id: 'trn', name: 'Training', w: 1, slot: 3 }, { id: 'job', name: 'Part-time job', w: 1, slot: 4 }],
+      blocks: [].concat(R([1, 2, 3, 4], 9, 13, 'cls', 'Classes'), R([1, 2, 3, 4], 15, 17, 'stu', 'Study'), R([1, 3, 5], 7.5, 9, 'trn', 'Gym'), R([5, 6], 12, 17, 'job', 'Shift')) },
+    worker: { label: '9 to 5 job', note: 'A full-time job with evenings for training and a side project.',
+      cats: [{ id: 'job', name: 'Job', w: 1, slot: 1 }, { id: 'side', name: 'Side project', w: 1.25, slot: 2 }, { id: 'trn', name: 'Training', w: 1, slot: 3 }, { id: 'lrn', name: 'Learning', w: 1.25, slot: 4 }],
+      blocks: [].concat(R([1, 2, 3, 4, 5], 9, 17, 'job', 'Work'), R([1, 3, 5], 18, 19.5, 'trn', 'Training'), R([2, 4], 19.5, 21.5, 'side', 'Side project'), R([6], 10, 12, 'lrn', 'Course')) },
+    freelancer: { label: 'Freelancer', note: 'Client work in the day, admin and learning around it.',
+      cats: [{ id: 'cli', name: 'Client work', w: 1.25, slot: 1 }, { id: 'adm', name: 'Admin and invoices', w: 1, slot: 2 }, { id: 'lrn', name: 'Learning', w: 1.25, slot: 3 }, { id: 'trn', name: 'Training', w: 1, slot: 4 }],
+      blocks: [].concat(R([1, 2, 3, 4, 5], 9, 13, 'cli', 'Client work'), R([1, 2, 3, 4], 14, 17, 'cli', 'Client work'), R([5], 14, 16, 'adm', 'Admin'), R([3], 17, 19, 'lrn', 'Learning'), R([2, 4], 7.5, 9, 'trn', 'Training')) }
+  };
+  function guessCurrency() {
+    var l = (navigator.language || 'en-US').split('-'), r = (l[1] || '').toUpperCase();
+    var m = { US: 'USD', GB: 'GBP', EG: 'EGP', SA: 'SAR', AE: 'AED', KW: 'KWD', QA: 'QAR', CA: 'CAD', AU: 'AUD', IN: 'INR', TR: 'TRY', JP: 'JPY', CH: 'CHF',
+      DE: 'EUR', FR: 'EUR', ES: 'EUR', IT: 'EUR', NL: 'EUR', IE: 'EUR', PT: 'EUR', BE: 'EUR', AT: 'EUR', FI: 'EUR', GR: 'EUR' };
+    return m[r] || 'USD';
+  }
+  function openOnboarding() {
+    var d = $('#onb');
+    if (!$('#ob-t0').options.length) {
+      $('#ob-t0').innerHTML = timeOpts(5, 10, 7.5); $('#ob-t1').innerHTML = timeOpts(18, 24, 22); $('#ob-up').innerHTML = timeOpts(0, 6, 2).replace(/>(\d\d):(\d\d)</g, function (m0, h, mi) { return '>' + (+h) + (mi === '30' ? '.5' : '') + ' h<'; });
+      $('#ob-tpl').innerHTML = Object.keys(TEMPLATES).map(function (k) { return '<option value="' + k + '">' + TEMPLATES[k].label + '</option>'; }).join('');
+      $('#ob-cur').value = guessCurrency();
+      $('#ob-tpl').addEventListener('change', function () { $('#ob-tn').textContent = TEMPLATES[$('#ob-tpl').value].note; });
+    }
+    $('#ob-tn').textContent = TEMPLATES[$('#ob-tpl').value].note;
+    if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+    $('#ob-name').focus();
+  }
+  function closeDlg(d) { if (d.close) d.close(); else d.removeAttribute('open'); }
+  $('#ob-skip').addEventListener('click', function () { closeDlg($('#onb')); try { localStorage.setItem('wl-onboarded-v1', '1'); } catch (e) {} });
+  $('#ob-go').addEventListener('click', function () {
+    var tpl = TEMPLATES[$('#ob-tpl').value] || TEMPLATES.blank, cur = cur3($('#ob-cur').value) || guessCurrency();
+    var t0 = parseFloat($('#ob-t0').value), t1 = parseFloat($('#ob-t1').value);
+    if (!(t1 > t0)) { setStatus('Choose a day end that is after the day start.', 'bad'); return; }
+    var p = { name: ($('#ob-name').value || 'My week').trim().slice(0, 40) || 'My week', created: Date.now(), weekStart: parseInt($('#ob-ws').value, 10),
+      t0: t0, t1: t1, upkeep: parseFloat($('#ob-up').value) || 0, cats: JSON.parse(JSON.stringify(tpl.cats)), blocks: JSON.parse(JSON.stringify(tpl.blocks)) };
+    money.base = cur; mChanged();
+    newPlan(p, true);
+    try { localStorage.setItem('wl-onboarded-v1', '1'); } catch (e) {}
+    closeDlg($('#onb')); setTimeout(maybeRefreshRates, 300);
+    setStatus('Plan created. Drag on the timeline to add blocks.', 'ok');
+  });
+
+  function stamp() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function doBackup() {
+    var out = { app: 'weekly-load-planner', version: 1, exported: new Date().toISOString(), active: activeId, plans: plain(plans), money: money };
+    saveFile('weekly-load-planner-backup-' + stamp() + '.json', JSON.stringify(out, null, 1), 'application/json');
+  }
+  var pendingImport = null;
+  function pickRestore() { if (ui.ro) return; $('#f-restore').value = ''; $('#f-restore').click(); }
+  $('#b-backup').addEventListener('click', doBackup);
+  $('#b-restore').addEventListener('click', pickRestore);
+  $('#b-restore2').addEventListener('click', pickRestore);
+  $('#f-restore').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var d = JSON.parse(String(rd.result));
+        if (!d || d.app !== 'weekly-load-planner' || !d.plans || typeof d.plans !== 'object') throw new Error('bad');
+        pendingImport = d;
+        var np = Object.keys(d.plans).length, mm = normMoney(d.money || {});
+        $('#imp-sum').textContent = 'This backup has ' + np + (np === 1 ? ' plan, ' : ' plans, ') + mm.income.length + ' income ' + (mm.income.length === 1 ? 'source' : 'sources') + ' and ' + mm.entries.length + (mm.entries.length === 1 ? ' expense.' : ' expenses.');
+        var dd = $('#imp'); if (dd.showModal) dd.showModal(); else dd.setAttribute('open', '');
+      } catch (err) { setStatus('That file is not a Weekly Load Planner backup.', 'bad'); }
+    };
+    rd.onerror = function () { setStatus('Could not read that file.', 'bad'); };
+    rd.readAsText(f);
+  });
+  function applyImport(replace) {
+    var d = pendingImport; pendingImport = null; if (!d) return;
+    var inP = {}; Object.keys(d.plans).forEach(function (k) { try { inP[k] = normalize(d.plans[k]); } catch (e) {} });
+    var inM = normMoney(d.money || {}), touched = {};
+    Object.keys(plans).forEach(function (k) { touched[k] = 1; });
+    if (replace) {
+      plans = inP; undo = {}; money = inM; mUndo = [];
+      activeId = plans[d.active] ? d.active : null;
+    } else {
+      Object.keys(inP).forEach(function (k) {
+        var id = k;
+        if (plans[id]) { if (JSON.stringify(plain(plans[id])) === JSON.stringify(inP[k])) return; id = uid(); inP[k].name = inP[k].name + ' (imported)'; }
+        plans[id] = inP[k];
+      });
+      ['ecats', 'income', 'entries', 'recurring'].forEach(function (key) {
+        inM[key].forEach(function (x) { if (!money[key].some(function (y) { return y.id === x.id; })) money[key].push(x); });
+      });
+    }
+    Object.keys(plans).forEach(function (k) { touched[k] = 1; });
+    Object.keys(touched).forEach(function (k) { scheduleSave(k); });
+    try { if (activeId) localStorage.setItem(ACTIVE_KEY, activeId); } catch (e) {}
+    mChanged(); ensureActive(); ui.sel = null;
+    renderAll(true); if (ui.view === 'money') buildMoney();
+    setStatus(replace ? 'Backup restored.' : 'Backup merged.', 'ok');
+  }
+  $('#imp-replace').addEventListener('click', function () { closeDlg($('#imp')); applyImport(true); });
+  $('#imp-merge').addEventListener('click', function () { closeDlg($('#imp')); applyImport(false); });
+  $('#imp-cancel').addEventListener('click', function () { pendingImport = null; closeDlg($('#imp')); });
+
+  if (PUBLIC) { $('#foot').hidden = false; $('#ver').textContent = 'v' + APP_VERSION; }
+  /* Installable app: offline cache and update prompt. Only on http(s), never from a file. */
+  if (PUBLIC && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    var reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () { if (reloading) return; reloading = true; location.reload(); });
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      var offer = function (w) { $('#upd').hidden = false; $('#upd-go').onclick = function () { w.postMessage('skip'); }; };
+      if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+      reg.addEventListener('updatefound', function () {
+        var w = reg.installing;
+        if (w) w.addEventListener('statechange', function () { if (w.state === 'installed' && navigator.serviceWorker.controller) offer(w); });
+      });
+      setInterval(function () { reg.update().catch(function () {}); }, 3600000);
+    }).catch(function () {});
+  }
+  renderAll(true);
+  boot().then(function () {
+    var seen = false; try { seen = !!localStorage.getItem('wl-onboarded-v1'); } catch (e) {}
+    if (PUBLIC && mode === 'local' && !Object.keys(plans).length && !seen) openOnboarding();
+  });
+})();
+</script>
+
+</body>
+</html>
