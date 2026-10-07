@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.0 - 2026-10-07
+- Income and the expense log now fold open and closed, with a one line summary when closed. Your choice is remembered.
+
 ## 1.0.0 - 2026-10-07
 First public release.
 - Weekly timeline with drag, resize and add, undo, overlap warnings
