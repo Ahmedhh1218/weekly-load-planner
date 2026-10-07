@@ -239,16 +239,18 @@ details.settings > summary { cursor: pointer; color: var(--ink-2); font-size: 13
 .tl-day.today::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
 .blk {
   position: absolute; top: 5px; height: 30px; border-radius: 4px; font-size: 12px; font-weight: 600; line-height: 30px;
-  padding-inline: 8px; white-space: nowrap; cursor: grab; user-select: none; -webkit-user-select: none;
+  padding-inline: 8px; white-space: nowrap; cursor: pointer; user-select: none; -webkit-user-select: none;
   transition: opacity .15s; touch-action: pan-x pan-y; z-index: 1;
 }
 .blk .lbl { pointer-events: none; }
-.blk.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; touch-action: none; cursor: grabbing; }
+.blk.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; }
+.blk.editing { outline-style: dashed; touch-action: none; cursor: grab; }
 .blk.clash { box-shadow: inset 0 0 0 2px var(--crit); }
-.grip { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; }
+.grip { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; pointer-events: none; }
+.blk.editing .grip { pointer-events: auto; }
 .grip.l { left: 0; } .grip.r { right: 0; }
-.blk.sel .grip::after { content: ""; position: absolute; top: 9px; bottom: 9px; left: 4px; width: 2px; border-radius: 1px; background: currentColor; opacity: .75; }
-@media (pointer: coarse) { .blk.sel .grip { width: 18px; } .blk.sel .grip::after { left: 7px; } }
+.blk.editing .grip::after { content: ""; position: absolute; top: 9px; bottom: 9px; left: 4px; width: 2px; border-radius: 1px; background: currentColor; opacity: .75; }
+@media (pointer: coarse) { .blk.editing .grip { width: 18px; } .blk.editing .grip::after { left: 7px; } }
 .ghost { position: absolute; top: 5px; height: 30px; border-radius: 4px; border: 2px dashed var(--ink-3); pointer-events: none; z-index: 2; }
 .ro .tl-row { cursor: default; } .ro .blk { cursor: default; }
 /* phone layout: days across, hours down, so the week scrolls with the page instead of sideways */
@@ -267,15 +269,27 @@ details.settings > summary { cursor: pointer; color: var(--ink-2); font-size: 13
 .tl.v .blk { padding: 6px 0 0; font-size: 11px; line-height: 1.1; writing-mode: vertical-rl; text-align: start; overflow: hidden; }
 .tl.v .grip { left: 0; right: 0; width: auto; height: 12px; cursor: ns-resize; }
 .tl.v .grip.l { top: 0; bottom: auto; } .tl.v .grip.r { bottom: 0; top: auto; }
-.tl.v .blk.sel .grip::after { top: 4px; bottom: auto; left: 50%; width: 14px; height: 2px; margin-left: -7px; }
+.tl.v .blk.editing .grip::after { top: 4px; bottom: auto; left: 50%; width: 14px; height: 2px; margin-left: -7px; }
 .tl.v .ghost { top: auto; height: auto; }
 .tl.v .tl-now { left: 34px; right: 0; top: auto; bottom: auto; width: auto; height: 2px; }
 .tl.v .tl-now::before { content: none; }
-@media (pointer: coarse) { .tl.v .blk.sel .grip { height: 20px; width: auto; } .tl.v .blk.sel .grip::after { top: 8px; left: 50%; } }
+@media (pointer: coarse) { .tl.v .blk.editing .grip { height: 20px; width: auto; } .tl.v .blk.editing .grip::after { top: 8px; left: 50%; } }
 
 /* editor */
 .editor { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
 .editor .none { color: var(--ink-3); }
+.tl-row.has-sel { z-index: 4; }
+.blk-edit { position: absolute; z-index: 6; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--surface); background: var(--ink); color: var(--bg); display: grid; place-items: center; padding: 0; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.35); touch-action: manipulation; }
+.blk-edit svg { width: 14px; height: 14px; display: block; }
+@media (pointer: coarse) { .blk-edit { width: 34px; height: 34px; } .blk-edit svg { width: 16px; height: 16px; } }
+.evw-h { display: flex; align-items: center; gap: 10px; font-size: 17px; min-width: 0; }
+.evw-h i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.evw-h b { font-family: var(--font-display); overflow-wrap: anywhere; }
+.evw-m { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px 14px; margin: 12px 0 0; }
+.evw-m dt { font-size: 12px; color: var(--ink-3); }
+.evw-m dd { margin: 2px 0 0; font-weight: 600; }
+.btn .ico { width: 13px; height: 13px; vertical-align: -1px; margin-right: 6px; }
+.editor.sheet { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 60; margin: 0; padding: 14px 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.28); max-height: 50vh; overflow: auto; }
 .egrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 14px; align-items: end; }
 .egrid .wide { grid-column: span 2; }
 @media (max-width: 480px) { .egrid .wide { grid-column: auto; } }
@@ -405,8 +419,9 @@ details.tbl .scroll-x { margin-top: 14px; }
       <div class="panel-h">
         <h2>The week</h2>
         <div class="legend" id="legend-a"></div>
+        <button type="button" class="btn" id="b-addblock">Add block</button>
       </div>
-      <p class="hint" id="hint">Drag a block to move it, drag its ends to resize, click or drag on empty space to add one. On a phone, tap a block first, then drag it.</p>
+      <p class="hint" id="hint">Tap a block to see its details. Press the pencil on it to edit: then drag it, drag its ends and change its details. Tap empty space to close the details.</p>
       <div class="scroll-x" id="tlscroll"><div class="tl" id="tl" role="group" aria-label="Weekly timeline, one row per day"></div></div>
       <div class="editor" id="editor"></div>
     </section>
@@ -538,7 +553,7 @@ details.tbl .scroll-x { margin-top: 14px; }
   'use strict';
   /* The public build flips this to true: no personal seed data, a first-run setup, and an on-device storage note. */
   var PUBLIC = true;
-  var APP_VERSION = '1.2.0';
+  var APP_VERSION = '1.3.0';
   var JD = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var JS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var STEP = 0.5, ROWH = 40, LABW = 44, RPAD = 14;
@@ -571,7 +586,7 @@ details.tbl .scroll-x { margin-top: 14px; }
 
   /* ---------- state ---------- */
   var plans = {}, activeId = null, db = null, dl = null, mode = 'loading';
-  var ui = { sel: null, metric: 'hours', ro: false, lastCat: null, delArmed: false };
+  var ui = { sel: null, editing: false, metric: 'hours', ro: false, lastCat: null, delArmed: false };
   var undo = {};            // planId -> [json]
   var dirty = {}, saving = false, again = false, saveTimer = null, dragging = null;
   var SEED = null;
@@ -810,8 +825,18 @@ details.tbl .scroll-x { margin-top: 14px; }
   function buildEditor() {
     var p = P(), host = $('#editor'); if (!p) return;
     var b = ui.sel ? findBlock(p, ui.sel) : null;
-    if (!b) {
-      host.innerHTML = '<p class="none">' + (ui.ro ? 'This plan is read-only.' : 'Select a block to rename it, change its category, or set exact times. Select a day chip afterwards to copy it there.') + '</p>';
+    var sheet = isVert();
+    host.classList.toggle('sheet', sheet);
+    if (!b) { host.hidden = true; host.innerHTML = ''; document.body.style.paddingBottom = ''; return; }
+    host.hidden = false;
+    if (!ui.editing || ui.ro) {
+      var vc = p.cats[catIdx(p, b.c)];
+      host.innerHTML = '<div class="evw"><div class="evw-h"><i style="background:' + cvar(vc) + '"></i><b>' + esc(b.t || vc.name) + '</b></div>' +
+        '<dl class="evw-m"><div><dt>Category</dt><dd>' + esc(vc.name) + '</dd></div><div><dt>Day</dt><dd>' + JD[b.d] + '</dd></div><div><dt>Time</dt><dd>' + hhmm(b.s) + '\u2013' + hhmm(b.e) + '</dd></div><div><dt>Length</dt><dd>' + fmt(b.e - b.s) + 'h</dd></div></dl>' +
+        '<div class="erow">' + (ui.ro ? '' : '<button type="button" class="btn solid" id="e-edit">' + ICO_PENCIL.replace('<svg ', '<svg class="ico" ') + 'Edit</button>') + '<button type="button" class="btn" id="e-close">Close</button></div></div>';
+      var be = $('#e-edit'); if (be) be.addEventListener('click', function () { ui.editing = true; applySel(); });
+      $('#e-close').addEventListener('click', deselect);
+      document.body.style.paddingBottom = sheet ? (host.offsetHeight + 28) + 'px' : '';
       return;
     }
     var ro = ui.ro ? ' disabled' : '';
@@ -824,7 +849,7 @@ details.tbl .scroll-x { margin-top: 14px; }
       '<div class="fld"><label for="e-s">Start</label><select class="in" id="e-s"' + ro + '>' + timeOpts(p.t0, p.t1 - STEP, b.s) + '</select></div>' +
       '<div class="fld"><label for="e-e">End</label><select class="in" id="e-e"' + ro + '>' + timeOpts(p.t0 + STEP, p.t1, b.e) + '</select></div>' +
       '</div>' +
-      '<div class="erow"><span class="eyebrow">Copy to</span>' + o.filter(function (d) { return d !== b.d; }).map(function (d) { return '<button type="button" class="chip" data-copy="' + d + '"' + ro + '>' + JS[d] + '</button>'; }).join('') +
+      '<div class="erow"><button type="button" class="btn solid" id="e-done">Done</button><span class="eyebrow">Copy to</span>' + o.filter(function (d) { return d !== b.d; }).map(function (d) { return '<button type="button" class="chip" data-copy="' + d + '"' + ro + '>' + JS[d] + '</button>'; }).join('') +
       '<span style="flex:1"></span><span class="num" id="e-dur" style="color:var(--ink-2)"></span><button type="button" class="btn" id="e-del"' + ro + '>Delete block</button></div>';
     syncEditor();
     if (ui.ro) return;
@@ -841,6 +866,8 @@ details.tbl .scroll-x { margin-top: 14px; }
       changed(); syncEditor(); renderAll(false);
     });
     $('#e-del').addEventListener('click', function (e) { confirmTwice(e.currentTarget, deleteSelected); });
+    $('#e-done').addEventListener('click', function () { ui.editing = false; applySel(); });
+    document.body.style.paddingBottom = sheet ? (host.offsetHeight + 28) + 'px' : '';
     document.querySelectorAll('[data-copy]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var pp = P(), src = findBlock(pp, ui.sel), d = parseInt(btn.dataset.copy, 10);
@@ -858,13 +885,32 @@ details.tbl .scroll-x { margin-top: 14px; }
   function deleteSelected() {
     var p = P(); if (!p || !ui.sel || ui.ro) return;
     pushUndo(); p.blocks = p.blocks.filter(function (b) { return b.id !== ui.sel; });
-    ui.sel = null; changed(); renderAll(true);
+    ui.sel = null; ui.editing = false; changed(); renderAll(true);
   }
-  function select(id) {
-    ui.sel = id;
-    document.querySelectorAll('.blk').forEach(function (el) { el.classList.toggle('sel', el.dataset.id === id); });
-    buildEditor();
+  var ICO_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z"/><path d="M13.5 7.5l3 3"/></svg>';
+  var ICO_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  /* The small round button next to the selected block: pencil to start editing, tick to finish. */
+  function placePencil() {
+    var p = P(), btn = tl.querySelector('.blk-edit');
+    tl.querySelectorAll('.tl-row.has-sel').forEach(function (r) { r.classList.remove('has-sel'); });
+    var b = p && ui.sel && !ui.ro ? findBlock(p, ui.sel) : null, el = b ? tl.querySelector('.blk[data-id="' + b.id + '"]') : null;
+    if (!el) { if (btn) btn.remove(); return; }
+    var row = el.parentNode, span = p.t1 - p.t0;
+    if (!btn) { btn = document.createElement('button'); btn.type = 'button'; btn.className = 'blk-edit'; }
+    btn.setAttribute('aria-label', ui.editing ? 'Finish editing this block' : 'Edit this block');
+    btn.innerHTML = ui.editing ? ICO_CHECK : ICO_PENCIL;
+    if (tl.classList.contains('v')) { btn.style.left = ''; btn.style.top = 'calc(' + ((b.s - p.t0) / span * 100) + '% - 14px)'; btn.style.right = '-6px'; }
+    else { btn.style.right = ''; btn.style.top = '-12px'; btn.style.left = 'calc(' + ((b.e - p.t0) / span * 100) + '% - 20px)'; }
+    row.classList.add('has-sel');
+    if (btn.parentNode !== row) row.appendChild(btn);
   }
+  function applySel() {
+    if (!ui.sel) ui.editing = false;
+    document.querySelectorAll('.blk').forEach(function (el) { el.classList.toggle('sel', el.dataset.id === ui.sel); el.classList.toggle('editing', ui.editing && el.dataset.id === ui.sel); });
+    placePencil(); buildEditor();
+  }
+  function select(id, edit) { ui.sel = id; ui.editing = !!edit && !ui.ro; applySel(); }
+  function deselect() { if (!ui.sel) return; ui.sel = null; ui.editing = false; applySel(); }
 
   /* ---------- timeline ---------- */
   var VPX = 34; /* pixels per hour in the phone layout */
@@ -879,11 +925,12 @@ details.tbl .scroll-x { margin-top: 14px; }
       return '<div class="tl-row" data-d="' + d + '">' + blocks + '</div>';
     }).join('');
     host.innerHTML = head + '<div class="tv-body" style="height:' + H + 'px"><div class="tv-axis">' + ticks + '</div>' + cols + '<div class="tv-plot">' + grid + '</div><div id="now"></div></div>';
-    placeNow();
+    placeNow(); placePencil();
     host.classList.toggle('ro', ui.ro);
   }
   function renderTimeline() {
     var p = P(), host = $('#tl'); if (!p) return;
+    if (!ui.sel) ui.editing = false;
     var span = p.t1 - p.t0, o = order(p), cl = clashes(p), vert = isVert();
     host.classList.toggle('v', vert); $('#tlscroll').classList.toggle('vscroll', vert);
     host.setAttribute('aria-label', vert ? 'Weekly timeline, one column per day' : 'Weekly timeline, one row per day');
@@ -898,7 +945,7 @@ details.tbl .scroll-x { margin-top: 14px; }
       return '<div class="tl-row" data-d="' + d + '"><div class="tl-day' + (pos === today ? ' today' : '') + '">' + JS[d] + '</div>' + blocks + '</div>';
     }).join('');
     host.innerHTML = '<div class="tl-axis">' + ticks + '</div><div class="tl-plot">' + grid + '</div>' + rows + '<div id="now"></div>';
-    placeNow();
+    placeNow(); placePencil();
     host.classList.toggle('ro', ui.ro);
     if (ui.sel && dragging === null && document.activeElement === document.body) { /* keep focus out of the way */ }
   }
@@ -908,7 +955,7 @@ details.tbl .scroll-x { margin-top: 14px; }
     var cands = [title, title.split(' ')[0]];
     for (var i = 0; i < cands.length; i++) { if (cands[i] && cands[i].length * 6.8 + 18 <= wPx) { label = cands[i]; break; } }
     var tipTxt = '<b>' + esc(title) + '</b><br>' + JD[b.d] + ' · ' + hhmm(b.s) + '–' + hhmm(b.e) + '<br>' + esc(c.name) + ' · ' + fmt(dur) + 'h';
-    return '<div class="blk' + (b.id === ui.sel ? ' sel' : '') + (cl.ids[b.id] ? ' clash' : '') + '" tabindex="0" role="button" aria-label="' + esc(title) + ', ' + JD[b.d] + ' ' + hhmm(b.s) + ' to ' + hhmm(b.e) + '" data-id="' + b.id + '" data-cat="' + c.id + '" data-tip="' + esc(tipTxt) + '" style="' + (vert ? 'top:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);height:calc(' + (dur / span * 100) + '% - 2px);left:1px;right:1px;' : 'left:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);width:calc(' + (dur / span * 100) + '% - 2px);') + 'background:' + cvar(c) + ';color:' + ovar(c) + '"><span class="grip l" data-g="l"></span><span class="lbl">' + esc(label) + '</span><span class="grip r" data-g="r"></span></div>';
+    return '<div class="blk' + (b.id === ui.sel ? ' sel' : '') + (b.id === ui.sel && ui.editing ? ' editing' : '') + (cl.ids[b.id] ? ' clash' : '') + '" tabindex="0" role="button" aria-label="' + esc(title) + ', ' + JD[b.d] + ' ' + hhmm(b.s) + ' to ' + hhmm(b.e) + '" data-id="' + b.id + '" data-cat="' + c.id + '" data-tip="' + esc(tipTxt) + '" style="' + (vert ? 'top:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);height:calc(' + (dur / span * 100) + '% - 2px);left:1px;right:1px;' : 'left:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);width:calc(' + (dur / span * 100) + '% - 2px);') + 'background:' + cvar(c) + ';color:' + ovar(c) + '"><span class="grip l" data-g="l"></span><span class="lbl">' + esc(label) + '</span><span class="grip r" data-g="r"></span></div>';
   }
   function placeNow() {
     var el = $('#now'), p = P(); if (!el || !p) return;
@@ -940,22 +987,47 @@ details.tbl .scroll-x { margin-top: 14px; }
     if (tl.classList.contains('v')) return p.t0 + clamp((clientY - r.top) / r.height, 0, 1) * (p.t1 - p.t0);
     return p.t0 + clamp((clientX - r.left) / r.width, 0, 1) * (p.t1 - p.t0);
   }
+  tl.addEventListener('click', function (e) {
+    var pb = e.target.closest && e.target.closest('.blk-edit'); if (!pb || ui.ro) return;
+    e.stopPropagation(); ui.editing = !ui.editing; applySel();
+  });
+  document.addEventListener('click', function (e) {
+    if (!ui.sel || ui.view !== 'schedule') return;
+    var t = e.target; if (!t || !t.closest) return;
+    if (t.closest('#tl, #editor, dialog, #b-addblock')) return;
+    if (t.closest('button, a, input, select, textarea, label, summary, [role="button"]')) return;
+    deselect();
+  });
+  $('#b-addblock').addEventListener('click', function () {
+    var p = P(); if (!p || ui.ro) return;
+    var o = order(p), cur = ui.sel ? findBlock(p, ui.sel) : null, td = new Date().getDay();
+    var d = cur ? cur.d : (o.indexOf(td) >= 0 ? td : o[0]), day = p.blocks.filter(function (x) { return x.d === d; }), s = p.t0;
+    for (var t = p.t0; t + 1 <= p.t1 + 1e-9; t += STEP) { if (!day.some(function (x) { return x.s < t + 1 && x.e > t; })) { s = t; break; } }
+    var cat = p.cats.some(function (c) { return c.id === ui.lastCat; }) ? ui.lastCat : p.cats[0].id;
+    pushUndo(); var nb = { id: uid(), d: d, s: s, e: Math.min(s + 1, p.t1), c: cat, t: '' };
+    p.blocks.push(nb); ui.sel = nb.id; ui.editing = true; changed(); renderAll(true);
+    var el = tl.querySelector('.blk[data-id="' + nb.id + '"]'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setStatus('Block added on ' + JD[d] + '. Drag it or change its details.');
+  });
   /* While a block is dragged the summary text above the timeline re-renders. Freeze its height so the timeline cannot shift under the pointer. */
   function lockAbove(on) {
     ['#kpis', '#insights'].forEach(function (q) { var el = $(q); if (el) el.style.height = on ? el.offsetHeight + 'px' : ''; });
   }
   tl.addEventListener('pointerdown', function (e) {
-    var p = P(); if (!p || ui.ro || e.button > 0) return;
+    var p = P(); if (!p || e.button > 0) return;
+    if (e.target.closest('.blk-edit')) return;
     var row = e.target.closest('.tl-row'); if (!row) return;
     var blkEl = e.target.closest('.blk');
     dragging = { pid: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, row: row, p: p };
     if (blkEl) {
       var b = findBlock(p, blkEl.dataset.id); if (!b) { dragging = null; return; }
-      select(b.id);
+      /* A block only moves while it is in edit mode. Otherwise a tap just shows its details. */
+      if (ui.ro || !(ui.editing && ui.sel === b.id)) { dragging.type = 'tap'; dragging.id = b.id; return; }
       dragging.type = e.target.dataset && e.target.dataset.g === 'l' ? 'rl' : e.target.dataset && e.target.dataset.g === 'r' ? 'rr' : 'move';
       dragging.id = b.id; dragging.orig = { d: b.d, s: b.s, e: b.e };
       dragging.el = blkEl;
     } else {
+      if (ui.ro || e.pointerType !== 'mouse') { dragging.type = 'blank'; return; }
       dragging.type = 'create'; dragging.d = parseInt(row.dataset.d, 10);
       dragging.start = Math.floor(hourAt(row, e.clientX, p, e.clientY) / STEP) * STEP;
     }
@@ -965,6 +1037,7 @@ details.tbl .scroll-x { margin-top: 14px; }
   tl.addEventListener('pointermove', function (e) {
     var g = dragging; if (!g || e.pointerId !== g.pid) return;
     var p = g.p, dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (g.type === 'tap' || g.type === 'blank') { if (Math.hypot(dx, dy) > 8) g.moved = true; return; }
     if (!g.moved && Math.hypot(dx, dy) < 5) return;
     var vt = tl.classList.contains('v'), span = p.t1 - p.t0, rowW = vt ? g.row.clientHeight : g.row.clientWidth, dh = Math.round((vt ? dy : dx) / rowW * span / STEP) * STEP;
     if (!g.moved) { g.moved = true; if (g.type !== 'create') { pushUndo(); } }
@@ -988,22 +1061,25 @@ details.tbl .scroll-x { margin-top: 14px; }
     else { b.e = clamp(o.e + dh, o.s + STEP, p.t1); }
     if (vt) { g.el.style.top = 'calc(' + ((b.s - p.t0) / span * 100) + '% + 1px)'; g.el.style.height = 'calc(' + ((b.e - b.s) / span * 100) + '% - 2px)'; }
     else { g.el.style.left = 'calc(' + ((b.s - p.t0) / span * 100) + '% + 1px)'; g.el.style.width = 'calc(' + ((b.e - b.s) / span * 100) + '% - 2px)'; }
-    syncEditor(); scheduleAnalytics();
+    placePencil(); syncEditor(); scheduleAnalytics();
   });
   function endDrag(e, cancel) {
     var g = dragging; if (!g || e.pointerId !== g.pid) return;
     dragging = null; lockAbove(false);
     var p = g.p;
     try { tl.releasePointerCapture(g.pid); } catch (er) {}
+    if (g.type === 'tap') { if (!cancel && !g.moved) select(g.id); return; }
+    if (g.type === 'blank') { if (!cancel && !g.moved) deselect(); return; }
     if (g.type === 'create') {
       var gh = g.row.querySelector('.ghost'); if (gh) gh.remove();
       if (cancel) return;
+      if (!g.moved) { deselect(); return; }
       var s = g.moved ? g.s : g.start, en = g.moved ? g.e : g.start + 1;
       s = clamp(s, p.t0, p.t1 - STEP); en = clamp(en, s + STEP, p.t1);
       var cat = p.cats.some(function (c) { return c.id === ui.lastCat; }) ? ui.lastCat : p.cats[0].id;
       pushUndo();
       var nb = { id: uid(), d: g.d, s: s, e: en, c: cat, t: '' };
-      p.blocks.push(nb); ui.sel = nb.id; changed(); renderAll(true);
+      p.blocks.push(nb); ui.sel = nb.id; ui.editing = true; changed(); renderAll(true);
       return;
     }
     if (cancel && g.moved) { var b0 = findBlock(p, g.id); if (b0) { b0.d = g.orig.d; b0.s = g.orig.s; b0.e = g.orig.e; } var st = undo[activeId]; if (st) st.pop(); renderAll(true); return; }
@@ -1015,9 +1091,10 @@ details.tbl .scroll-x { margin-top: 14px; }
     var el = e.target.closest && e.target.closest('.blk'); var p = P(); if (!el || !p) return;
     var b = findBlock(p, el.dataset.id); if (!b) return;
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.id); return; }
-    if (ui.ro) return;
+    if (e.key === 'Escape') { e.preventDefault(); if (ui.editing) { ui.editing = false; applySel(); } else deselect(); return; }
+    if (ui.ro || !(ui.editing && ui.sel === b.id)) return;
     var o = order(p), pos = o.indexOf(b.d), dur = b.e - b.s, handled = true;
-    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); select(b.id); var dbtn = $('#e-del'); if (dbtn) { dbtn.focus(); dbtn.click(); } return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); var dbtn = $('#e-del'); if (dbtn) { dbtn.focus(); dbtn.click(); } return; }
     pushUndo();
     var vk = tl.classList.contains('v'), kT = vk ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'], kD = vk ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
     if (e.key === kT[0] || e.key === kT[1]) {
@@ -1028,7 +1105,7 @@ details.tbl .scroll-x { margin-top: 14px; }
     else if (e.key === kD[1]) b.d = o[clamp(pos + 1, 0, 6)];
     else handled = false;
     if (!handled) { var st = undo[activeId]; if (st) st.pop(); return; }
-    e.preventDefault(); ui.sel = b.id; changed(); renderAll(false);
+    e.preventDefault(); ui.sel = b.id; ui.editing = true; changed(); renderAll(false);
     var again2 = tl.querySelector('.blk[data-id="' + b.id + '"]'); if (again2) again2.focus();
   });
   document.addEventListener('keydown', function (e) {
@@ -1202,7 +1279,7 @@ details.tbl .scroll-x { margin-top: 14px; }
     });
   });
   $('#m-settings').addEventListener('toggle', function () {});
-  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(renderTimeline, 120); });
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { renderTimeline(); buildEditor(); }, 120); });
   $('#settings').addEventListener('toggle', function () { setTimeout(renderTimeline, 0); });
   setInterval(placeNow, 60000);
   window.addEventListener('beforeunload', function () { if (Object.keys(dirty).length) { clearTimeout(saveTimer); flush(); } });

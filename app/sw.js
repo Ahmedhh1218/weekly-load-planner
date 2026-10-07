@@ -1,6 +1,6 @@
 /* Weekly Load Planner service worker.
    Bump VERSION on every release: a changed file is how browsers notice an update. */
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const CACHE = 'wlp-' + VERSION;
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
@@ -11,7 +11,8 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  /* cache: 'reload' skips the browser's HTTP cache, so a new version never stores a stale copy of the files. */
+  e.waitUntil(caches.open(CACHE).then((c) => Promise.all(SHELL.map((u) => c.add(new Request(u, { cache: 'reload' }))))));
 });
 
 self.addEventListener('activate', (e) => {
