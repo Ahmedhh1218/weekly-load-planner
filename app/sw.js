@@ -1,6 +1,6 @@
 /* Weekly Load Planner service worker.
    Bump VERSION on every release: a changed file is how browsers notice an update. */
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CACHE = 'wlp-' + VERSION;
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',

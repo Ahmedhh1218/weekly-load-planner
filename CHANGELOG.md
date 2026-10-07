@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 - 2026-10-07
+- Phone layout: on narrow screens the week shows days across and hours down, so it scrolls with the page instead of sideways. Drag, resize and tap-to-add work in both layouts.
+- Fixed: the timeline could jump under your finger or mouse while dragging a block, because the summary text above it changed height.
+
 ## 1.1.0 - 2026-10-07
 - Income and the expense log now fold open and closed, with a one line summary when closed. Your choice is remembered.
 

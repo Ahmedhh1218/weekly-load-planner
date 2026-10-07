@@ -251,6 +251,27 @@ details.settings > summary { cursor: pointer; color: var(--ink-2); font-size: 13
 @media (pointer: coarse) { .blk.sel .grip { width: 18px; } .blk.sel .grip::after { left: 7px; } }
 .ghost { position: absolute; top: 5px; height: 30px; border-radius: 4px; border: 2px dashed var(--ink-3); pointer-events: none; z-index: 2; }
 .ro .tl-row { cursor: default; } .ro .blk { cursor: default; }
+/* phone layout: days across, hours down, so the week scrolls with the page instead of sideways */
+.scroll-x.vscroll { overflow-x: visible; }
+.tl.v { min-width: 0; padding: 0; }
+.tv-head { display: grid; grid-template-columns: 34px repeat(7, minmax(0, 1fr)); font-size: 11px; font-weight: 600; color: var(--ink-2); text-align: center; padding-bottom: 6px; }
+.tv-head .today { color: var(--ink); }
+.tv-head .today::after { content: ""; display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); margin: 2px auto 0; }
+.tv-body { position: relative; display: grid; grid-template-columns: 34px repeat(7, minmax(0, 1fr)); }
+.tv-axis { position: relative; }
+.tv-axis span { position: absolute; right: 5px; transform: translateY(-50%); font-size: 10px; color: var(--ink-3); font-family: var(--font-data); }
+.tv-plot { position: absolute; left: 34px; right: 0; top: 0; bottom: 0; pointer-events: none; }
+.tv-plot i { position: absolute; left: 0; right: 0; height: 1px; background: var(--grid); }
+.tl.v .tl-row { height: auto; }
+.tl.v .tl-row + .tl-row { border-top: 0; border-left: 1px solid var(--grid); }
+.tl.v .blk { padding: 6px 0 0; font-size: 11px; line-height: 1.1; writing-mode: vertical-rl; text-align: start; overflow: hidden; }
+.tl.v .grip { left: 0; right: 0; width: auto; height: 12px; cursor: ns-resize; }
+.tl.v .grip.l { top: 0; bottom: auto; } .tl.v .grip.r { bottom: 0; top: auto; }
+.tl.v .blk.sel .grip::after { top: 4px; bottom: auto; left: 50%; width: 14px; height: 2px; margin-left: -7px; }
+.tl.v .ghost { top: auto; height: auto; }
+.tl.v .tl-now { left: 34px; right: 0; top: auto; bottom: auto; width: auto; height: 2px; }
+.tl.v .tl-now::before { content: none; }
+@media (pointer: coarse) { .tl.v .blk.sel .grip { height: 20px; width: auto; } .tl.v .blk.sel .grip::after { top: 8px; left: 50%; } }
 
 /* editor */
 .editor { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
@@ -517,7 +538,7 @@ details.tbl .scroll-x { margin-top: 14px; }
   'use strict';
   /* The public build flips this to true: no personal seed data, a first-run setup, and an on-device storage note. */
   var PUBLIC = true;
-  var APP_VERSION = '1.1.0';
+  var APP_VERSION = '1.2.0';
   var JD = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var JS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var STEP = 0.5, ROWH = 40, LABW = 44, RPAD = 14;
@@ -846,9 +867,27 @@ details.tbl .scroll-x { margin-top: 14px; }
   }
 
   /* ---------- timeline ---------- */
+  var VPX = 34; /* pixels per hour in the phone layout */
+  function isVert() { var sc = $('#tlscroll'); return !!sc && sc.clientWidth > 0 && sc.clientWidth < 600; }
+  function renderTimelineV(p, host, span, o, cl) {
+    var H = Math.round(span * VPX), today = o.indexOf(new Date().getDay()), ticks = '', grid = '';
+    for (var h = Math.ceil(p.t0); h <= p.t1; h++) grid += '<i style="top:' + ((h - p.t0) / span * 100) + '%"></i>';
+    for (var t = Math.ceil(p.t0 / 2) * 2; t <= p.t1; t += 2) ticks += '<span style="top:' + ((t - p.t0) / span * 100) + '%">' + hhmm(t) + '</span>';
+    var head = '<div class="tv-head"><span></span>' + o.map(function (d, pos) { return '<div class="' + (pos === today ? 'today' : '') + '">' + JS[d] + '</div>'; }).join('') + '</div>';
+    var cols = o.map(function (d) {
+      var blocks = p.blocks.filter(function (b) { return b.d === d; }).map(function (b) { return blockHTML(p, b, span, 0, cl, true); }).join('');
+      return '<div class="tl-row" data-d="' + d + '">' + blocks + '</div>';
+    }).join('');
+    host.innerHTML = head + '<div class="tv-body" style="height:' + H + 'px"><div class="tv-axis">' + ticks + '</div>' + cols + '<div class="tv-plot">' + grid + '</div><div id="now"></div></div>';
+    placeNow();
+    host.classList.toggle('ro', ui.ro);
+  }
   function renderTimeline() {
     var p = P(), host = $('#tl'); if (!p) return;
-    var span = p.t1 - p.t0, o = order(p), cl = clashes(p);
+    var span = p.t1 - p.t0, o = order(p), cl = clashes(p), vert = isVert();
+    host.classList.toggle('v', vert); $('#tlscroll').classList.toggle('vscroll', vert);
+    host.setAttribute('aria-label', vert ? 'Weekly timeline, one column per day' : 'Weekly timeline, one row per day');
+    if (vert) { renderTimelineV(p, host, span, o, cl); return; }
     var trackW = Math.max(host.clientWidth - LABW - RPAD, 100);
     var grid = '', ticks = '';
     for (var h = Math.ceil(p.t0); h <= p.t1; h++) if (h >= p.t0) grid += '<i style="left:' + ((h - p.t0) / span * 100) + '%"></i>';
@@ -863,34 +902,47 @@ details.tbl .scroll-x { margin-top: 14px; }
     host.classList.toggle('ro', ui.ro);
     if (ui.sel && dragging === null && document.activeElement === document.body) { /* keep focus out of the way */ }
   }
-  function blockHTML(p, b, span, trackW, cl) {
-    var c = p.cats[catIdx(p, b.c)], dur = b.e - b.s, wPx = dur / span * trackW;
+  function blockHTML(p, b, span, trackW, cl, vert) {
+    var c = p.cats[catIdx(p, b.c)], dur = b.e - b.s, wPx = vert ? dur * VPX + 8 : dur / span * trackW;
     var title = b.t || c.name, label = '';
     var cands = [title, title.split(' ')[0]];
     for (var i = 0; i < cands.length; i++) { if (cands[i] && cands[i].length * 6.8 + 18 <= wPx) { label = cands[i]; break; } }
     var tipTxt = '<b>' + esc(title) + '</b><br>' + JD[b.d] + ' · ' + hhmm(b.s) + '–' + hhmm(b.e) + '<br>' + esc(c.name) + ' · ' + fmt(dur) + 'h';
-    return '<div class="blk' + (b.id === ui.sel ? ' sel' : '') + (cl.ids[b.id] ? ' clash' : '') + '" tabindex="0" role="button" aria-label="' + esc(title) + ', ' + JD[b.d] + ' ' + hhmm(b.s) + ' to ' + hhmm(b.e) + '" data-id="' + b.id + '" data-cat="' + c.id + '" data-tip="' + esc(tipTxt) + '" style="left:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);width:calc(' + (dur / span * 100) + '% - 2px);background:' + cvar(c) + ';color:' + ovar(c) + '"><span class="grip l" data-g="l"></span><span class="lbl">' + esc(label) + '</span><span class="grip r" data-g="r"></span></div>';
+    return '<div class="blk' + (b.id === ui.sel ? ' sel' : '') + (cl.ids[b.id] ? ' clash' : '') + '" tabindex="0" role="button" aria-label="' + esc(title) + ', ' + JD[b.d] + ' ' + hhmm(b.s) + ' to ' + hhmm(b.e) + '" data-id="' + b.id + '" data-cat="' + c.id + '" data-tip="' + esc(tipTxt) + '" style="' + (vert ? 'top:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);height:calc(' + (dur / span * 100) + '% - 2px);left:1px;right:1px;' : 'left:calc(' + ((b.s - p.t0) / span * 100) + '% + 1px);width:calc(' + (dur / span * 100) + '% - 2px);') + 'background:' + cvar(c) + ';color:' + ovar(c) + '"><span class="grip l" data-g="l"></span><span class="lbl">' + esc(label) + '</span><span class="grip r" data-g="r"></span></div>';
   }
   function placeNow() {
     var el = $('#now'), p = P(); if (!el || !p) return;
     var n = new Date(), x = n.getHours() + n.getMinutes() / 60;
     if (x < p.t0 || x > p.t1) { el.style.display = 'none'; return; }
     el.className = 'tl-now'; el.style.display = '';
+    if ($('#tl').classList.contains('v')) { el.style.left = ''; el.style.top = 'calc(' + ((x - p.t0) / (p.t1 - p.t0) * 100) + '% - 1px)'; return; }
+    el.style.top = '';
     el.style.left = 'calc(' + LABW + 'px + (100% - ' + (LABW + RPAD) + 'px) * ' + ((x - p.t0) / (p.t1 - p.t0)) + ' - 1px)';
   }
   function refreshTimeline() { renderTimeline(); }
 
   /* pointer interaction */
   var tl = $('#tl');
-  function rowAt(clientY) {
+  function rowAt(clientY, clientX) {
+    if (tl.classList.contains('v')) {
+      var cs = tl.querySelectorAll('.tl-row'); if (!cs.length) return null;
+      var best = cs[0], bd = 1e9;
+      for (var i = 0; i < cs.length; i++) { var r = cs[i].getBoundingClientRect(), d = clientX < r.left ? r.left - clientX : clientX > r.right ? clientX - r.right : 0; if (d < bd) { bd = d; best = cs[i]; } }
+      return best;
+    }
     var first = tl.querySelector('.tl-row'); if (!first) return null;
     var top = first.getBoundingClientRect().top;
     var idx = clamp(Math.floor((clientY - top) / ROWH), 0, 6);
     return tl.querySelectorAll('.tl-row')[idx];
   }
-  function hourAt(row, clientX, p) {
+  function hourAt(row, clientX, p, clientY) {
     var r = row.getBoundingClientRect();
+    if (tl.classList.contains('v')) return p.t0 + clamp((clientY - r.top) / r.height, 0, 1) * (p.t1 - p.t0);
     return p.t0 + clamp((clientX - r.left) / r.width, 0, 1) * (p.t1 - p.t0);
+  }
+  /* While a block is dragged the summary text above the timeline re-renders. Freeze its height so the timeline cannot shift under the pointer. */
+  function lockAbove(on) {
+    ['#kpis', '#insights'].forEach(function (q) { var el = $(q); if (el) el.style.height = on ? el.offsetHeight + 'px' : ''; });
   }
   tl.addEventListener('pointerdown', function (e) {
     var p = P(); if (!p || ui.ro || e.button > 0) return;
@@ -905,40 +957,42 @@ details.tbl .scroll-x { margin-top: 14px; }
       dragging.el = blkEl;
     } else {
       dragging.type = 'create'; dragging.d = parseInt(row.dataset.d, 10);
-      dragging.start = Math.floor(hourAt(row, e.clientX, p) / STEP) * STEP;
+      dragging.start = Math.floor(hourAt(row, e.clientX, p, e.clientY) / STEP) * STEP;
     }
+    lockAbove(true);
     try { tl.setPointerCapture(e.pointerId); } catch (er) {}
   });
   tl.addEventListener('pointermove', function (e) {
     var g = dragging; if (!g || e.pointerId !== g.pid) return;
     var p = g.p, dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.moved && Math.hypot(dx, dy) < 5) return;
-    var span = p.t1 - p.t0, rowW = g.row.clientWidth, dh = Math.round(dx / rowW * span / STEP) * STEP;
+    var vt = tl.classList.contains('v'), span = p.t1 - p.t0, rowW = vt ? g.row.clientHeight : g.row.clientWidth, dh = Math.round((vt ? dy : dx) / rowW * span / STEP) * STEP;
     if (!g.moved) { g.moved = true; if (g.type !== 'create') { pushUndo(); } }
     tip.classList.remove('on');
     if (g.type === 'create') {
-      var cur = Math.floor(hourAt(g.row, e.clientX, p) / STEP) * STEP;
+      var cur = Math.floor(hourAt(g.row, e.clientX, p, e.clientY) / STEP) * STEP;
       var a = Math.min(g.start, cur), z = Math.max(g.start, cur) + STEP;
       z = Math.min(z, p.t1); g.s = a; g.e = Math.max(z, a + STEP);
       var gh = g.row.querySelector('.ghost');
       if (!gh) { gh = document.createElement('div'); gh.className = 'ghost'; g.row.appendChild(gh); }
-      gh.style.left = 'calc(' + ((g.s - p.t0) / span * 100) + '% + 1px)'; gh.style.width = 'calc(' + ((g.e - g.s) / span * 100) + '% - 2px)';
+      if (vt) { gh.style.top = 'calc(' + ((g.s - p.t0) / span * 100) + '% + 1px)'; gh.style.height = 'calc(' + ((g.e - g.s) / span * 100) + '% - 2px)'; gh.style.left = '1px'; gh.style.right = '1px'; }
+      else { gh.style.left = 'calc(' + ((g.s - p.t0) / span * 100) + '% + 1px)'; gh.style.width = 'calc(' + ((g.e - g.s) / span * 100) + '% - 2px)'; }
       return;
     }
     var b = findBlock(p, g.id), o = g.orig, dur = o.e - o.s;
     if (g.type === 'move') {
       b.s = clamp(o.s + dh, p.t0, p.t1 - dur); b.e = b.s + dur;
-      var rowEl = rowAt(e.clientY);
+      var rowEl = rowAt(e.clientY, e.clientX);
       if (rowEl) { b.d = parseInt(rowEl.dataset.d, 10); if (g.el.parentNode !== rowEl) rowEl.appendChild(g.el); }
     } else if (g.type === 'rl') { b.s = clamp(o.s + dh, p.t0, o.e - STEP); }
     else { b.e = clamp(o.e + dh, o.s + STEP, p.t1); }
-    g.el.style.left = 'calc(' + ((b.s - p.t0) / span * 100) + '% + 1px)';
-    g.el.style.width = 'calc(' + ((b.e - b.s) / span * 100) + '% - 2px)';
+    if (vt) { g.el.style.top = 'calc(' + ((b.s - p.t0) / span * 100) + '% + 1px)'; g.el.style.height = 'calc(' + ((b.e - b.s) / span * 100) + '% - 2px)'; }
+    else { g.el.style.left = 'calc(' + ((b.s - p.t0) / span * 100) + '% + 1px)'; g.el.style.width = 'calc(' + ((b.e - b.s) / span * 100) + '% - 2px)'; }
     syncEditor(); scheduleAnalytics();
   });
   function endDrag(e, cancel) {
     var g = dragging; if (!g || e.pointerId !== g.pid) return;
-    dragging = null;
+    dragging = null; lockAbove(false);
     var p = g.p;
     try { tl.releasePointerCapture(g.pid); } catch (er) {}
     if (g.type === 'create') {
@@ -965,12 +1019,13 @@ details.tbl .scroll-x { margin-top: 14px; }
     var o = order(p), pos = o.indexOf(b.d), dur = b.e - b.s, handled = true;
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); select(b.id); var dbtn = $('#e-del'); if (dbtn) { dbtn.focus(); dbtn.click(); } return; }
     pushUndo();
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      var dir = e.key === 'ArrowLeft' ? -STEP : STEP;
+    var vk = tl.classList.contains('v'), kT = vk ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'], kD = vk ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
+    if (e.key === kT[0] || e.key === kT[1]) {
+      var dir = e.key === kT[0] ? -STEP : STEP;
       if (e.shiftKey) b.e = clamp(b.e + dir, b.s + STEP, p.t1);
       else { b.s = clamp(b.s + dir, p.t0, p.t1 - dur); b.e = b.s + dur; }
-    } else if (e.key === 'ArrowUp') b.d = o[clamp(pos - 1, 0, 6)];
-    else if (e.key === 'ArrowDown') b.d = o[clamp(pos + 1, 0, 6)];
+    } else if (e.key === kD[0]) b.d = o[clamp(pos - 1, 0, 6)];
+    else if (e.key === kD[1]) b.d = o[clamp(pos + 1, 0, 6)];
     else handled = false;
     if (!handled) { var st = undo[activeId]; if (st) st.pop(); return; }
     e.preventDefault(); ui.sel = b.id; changed(); renderAll(false);
